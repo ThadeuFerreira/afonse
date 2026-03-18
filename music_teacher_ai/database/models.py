@@ -30,6 +30,7 @@ class Song(SQLModel, table=True):
     valence: Optional[float] = None
     energy: Optional[float] = None
     danceability: Optional[float] = None
+    metadata_source: Optional[str] = None  # "spotify" | "musicbrainz" | "lastfm" | None=not enriched
 
 
 class Lyrics(SQLModel, table=True):

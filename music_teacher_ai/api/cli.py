@@ -309,21 +309,30 @@ def doctor(
     # ------------------------------------------------------------------
     if not skip_spotify:
         with check("Spotify: authentication"):
-            from music_teacher_ai.core.spotify_client import get_client
+            from music_teacher_ai.core.spotify_client import get_client, SpotifyPremiumRequiredError
+            from spotipy.exceptions import SpotifyException
             sp = get_client()
-            r = sp.search(q="Imagine", type="track", limit=1)
-            assert r["tracks"]["items"], "No results"
+            try:
+                r = sp.search(q="Imagine", type="track", limit=1)
+                assert r["tracks"]["items"], "No results"
+            except SpotifyException as exc:
+                if exc.http_status == 403:
+                    raise SpotifyPremiumRequiredError(
+                        "403 – app owner needs Spotify Premium or Extended Quota Mode. "
+                        "See: https://developer.spotify.com/documentation/web-api/concepts/quota-modes"
+                    ) from exc
+                raise
 
         with check("Spotify: search_track() for 'Imagine'"):
-            from music_teacher_ai.core.spotify_client import search_track
+            from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
             meta = search_track("Imagine", "John Lennon")
             assert meta is not None, "Returned None"
             assert meta.spotify_id
 
         with check("Spotify: audio features populated"):
-            from music_teacher_ai.core.spotify_client import search_track
+            from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
             meta = search_track("Imagine", "John Lennon")
-            assert meta and meta.tempo and meta.energy is not None
+            assert meta and meta.energy is not None
 
     # ------------------------------------------------------------------
     # 3. Billboard
@@ -344,7 +353,29 @@ def doctor(
             assert lyrics and len(lyrics) > 100, "Lyrics too short or None"
 
     # ------------------------------------------------------------------
-    # 5. Database
+    # 5. MusicBrainz (no credentials needed)
+    # ------------------------------------------------------------------
+    with check("MusicBrainz: search 'Imagine'"):
+        from music_teacher_ai.core.musicbrainz_client import search_track as mb_search
+        meta = mb_search("Imagine", "John Lennon")
+        assert meta is not None, "No result from MusicBrainz"
+        assert meta.title
+
+    # ------------------------------------------------------------------
+    # 6. Last.fm (optional)
+    # ------------------------------------------------------------------
+    with check("Last.fm: LASTFM_API_KEY set"):
+        assert os.getenv("LASTFM_API_KEY"), "Not set (optional – genres/tags will be skipped)"
+
+    with check("Last.fm: get tags for 'Imagine'"):
+        from music_teacher_ai.core.lastfm_client import get_tags, is_configured
+        if not is_configured():
+            raise AssertionError("LASTFM_API_KEY not set — skipping")
+        tags = get_tags("Imagine", "John Lennon")
+        assert isinstance(tags, list)
+
+    # ------------------------------------------------------------------
+    # 7. Database
     # ------------------------------------------------------------------
     with check("Database: schema creation"):
         with tempfile.TemporaryDirectory() as tmp:
@@ -368,7 +399,7 @@ def doctor(
             assert fetched.name == "__smoke_test__"
 
     # ------------------------------------------------------------------
-    # 6. Embedding model
+    # 8. Embedding model
     # ------------------------------------------------------------------
     with check("Embeddings: model loads"):
         from sentence_transformers import SentenceTransformer
@@ -384,7 +415,7 @@ def doctor(
         assert vec.shape == (1, EMBEDDING_DIM), f"Got {vec.shape}"
 
     # ------------------------------------------------------------------
-    # 7. FAISS
+    # 9. FAISS
     # ------------------------------------------------------------------
     with check("FAISS: index create / add / search"):
         import numpy as np

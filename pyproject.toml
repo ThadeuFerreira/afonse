@@ -23,6 +23,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "rich>=13.0",
     "structlog>=24.0",
+    "musicbrainzngs>=0.7",
+    "pylast>=5.2",
 ]
 
 [project.optional-dependencies]
@@ -51,4 +53,9 @@ target-version = ["py311"]
 testpaths = ["tests"]
 markers = [
     "smoke: marks tests that call real external APIs (deselect with -m 'not smoke')",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
 ]

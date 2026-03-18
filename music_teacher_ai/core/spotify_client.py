@@ -2,25 +2,41 @@ from dataclasses import dataclass, field
 from typing import Optional
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.exceptions import SpotifyException
 
 from music_teacher_ai.config.settings import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
+from music_teacher_ai.core.api_cache import cached_api
+
+
+class SpotifyPremiumRequiredError(RuntimeError):
+    """
+    Raised when the Spotify API returns 403 with a premium-required message.
+
+    Since November 2024, Spotify requires the owner of the developer app to have
+    an active Premium subscription. To fix this:
+
+      1. Upgrade the Spotify account that owns the developer app to Premium, OR
+      2. Apply for Extended Quota Mode at:
+         https://developer.spotify.com/documentation/web-api/concepts/quota-modes
+    """
 
 
 @dataclass
 class TrackMetadata:
-    spotify_id: str
     title: str
     artist: str
-    artist_spotify_id: str
     album: str
-    release_year: Optional[int]
-    popularity: Optional[int]
-    duration_ms: Optional[int]
+    spotify_id: Optional[str] = None        # None when sourced from MusicBrainz/Last.fm
+    artist_spotify_id: Optional[str] = None  # None when sourced from MusicBrainz/Last.fm
+    release_year: Optional[int] = None
+    popularity: Optional[int] = None
+    duration_ms: Optional[int] = None
     genres: list[str] = field(default_factory=list)
     tempo: Optional[float] = None
     valence: Optional[float] = None
     energy: Optional[float] = None
     danceability: Optional[float] = None
+    metadata_source: str = "spotify"
 
 
 def _make_client() -> spotipy.Spotify:
@@ -41,10 +57,20 @@ def get_client() -> spotipy.Spotify:
     return _client
 
 
+@cached_api("spotify", from_cache=lambda d: TrackMetadata(**d))
 def search_track(title: str, artist: str) -> Optional[TrackMetadata]:
     sp = get_client()
     query = f"track:{title} artist:{artist}"
-    results = sp.search(q=query, type="track", limit=1)
+    try:
+        results = sp.search(q=query, type="track", limit=1)
+    except SpotifyException as exc:
+        if exc.http_status == 403:
+            raise SpotifyPremiumRequiredError(
+                "Spotify API returned 403: the owner of this developer app requires an active "
+                "Premium subscription. Upgrade the account at spotify.com or apply for Extended "
+                "Quota Mode at https://developer.spotify.com/documentation/web-api/concepts/quota-modes"
+            ) from exc
+        raise
     items = results.get("tracks", {}).get("items", [])
     if not items:
         return None

@@ -209,17 +209,17 @@ Key endpoints:
 
 ## Environment Variables
 
-Required:
+```
+SPOTIFY_CLIENT_ID       # optional – full metadata + audio features (requires Premium)
+SPOTIFY_CLIENT_SECRET   # optional
+GENIUS_ACCESS_TOKEN     # required for lyrics
+LASTFM_API_KEY          # optional – genre tags and play counts (free key)
+DATABASE_PATH           # default: data/music.db
+FAISS_INDEX_PATH        # default: data/embeddings.index
+PLAYLISTS_DIR           # default: data/playlists
+```
 
-```
-SPOTIFY_CLIENT_ID
-SPOTIFY_CLIENT_SECRET
-GENIUS_ACCESS_TOKEN
-```
-
-Optional:
-
-```
-DATABASE_PATH   (default: data/music.db)
-FAISS_INDEX_PATH (default: data/embeddings.index)
-```
+Metadata source priority when credentials are absent:
+1. Spotify (title, artist, album, year, genres, audio features)
+2. MusicBrainz (title, artist, album, year, duration — no key required)
+3. Last.fm supplements MusicBrainz with genre tags and play counts

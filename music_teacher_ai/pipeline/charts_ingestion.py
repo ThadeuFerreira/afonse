@@ -1,10 +1,9 @@
-import json
 from datetime import date
 
 from rich.console import Console
 from sqlmodel import select
 
-from music_teacher_ai.core.billboard_client import iter_all_years, ChartEntry
+from music_teacher_ai.core.billboard_client import fetch_all_years_parallel, ChartEntry
 from music_teacher_ai.database.models import Artist, Song, Chart, IngestionFailure
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.config.settings import BILLBOARD_START_YEAR
@@ -22,7 +21,6 @@ def _get_or_create_artist(session, name: str) -> Artist:
 
 
 def _get_or_create_song(session, entry: ChartEntry, artist: Artist) -> Song:
-    # Check by artist + title (no spotify_id yet at this stage)
     song = session.exec(
         select(Song)
         .where(Song.title == entry.title)
@@ -42,45 +40,64 @@ def _get_or_create_song(session, entry: ChartEntry, artist: Artist) -> Song:
 def ingest_charts(
     start: int = BILLBOARD_START_YEAR,
     end: int | None = None,
+    workers: int = 5,
 ) -> None:
     end = end or date.today().year
+    total_years = end - start + 1
+
+    console.print(
+        f"[cyan]Fetching {total_years} Billboard charts in parallel (workers={workers})…[/cyan]"
+    )
+
+    # Fetch all years concurrently; writes remain sequential (SQLite)
+    results = fetch_all_years_parallel(start=start, end=end, workers=workers)
+
+    fetch_errors = {year: exc for year, exc in results.items() if isinstance(exc, Exception)}
+    if fetch_errors:
+        for year, exc in sorted(fetch_errors.items()):
+            console.print(f"[red]  {year}: {exc}[/red]")
+
     total_songs = 0
     total_chart_entries = 0
 
-    for year, entries in iter_all_years(start=start, end=end):
-        console.print(f"[cyan]Ingesting Billboard {year}[/cyan] ({len(entries)} entries)")
+    for year in sorted(results):
+        entries = results[year]
+        if isinstance(entries, Exception):
+            continue  # already reported above
+
+        console.print(f"[cyan]Ingesting {year}[/cyan] ({len(entries)} entries)")
         with get_session() as session:
             for entry in entries:
                 try:
                     artist = _get_or_create_artist(session, entry.artist)
                     song = _get_or_create_song(session, entry, artist)
 
-                    # Avoid duplicate chart entries
                     existing = session.exec(
                         select(Chart)
                         .where(Chart.song_id == song.id)
                         .where(Chart.date == entry.date)
                     ).first()
                     if not existing:
-                        chart = Chart(
+                        session.add(Chart(
                             song_id=song.id,
                             chart_name="hot-100",
                             rank=entry.rank,
                             date=entry.date,
-                        )
-                        session.add(chart)
+                        ))
                         total_chart_entries += 1
 
                     total_songs += 1
                 except Exception as exc:
-                    session.add(
-                        IngestionFailure(
-                            stage="charts",
-                            error_message=str(exc),
-                            raw_title=entry.title,
-                            raw_artist=entry.artist,
-                        )
-                    )
+                    session.add(IngestionFailure(
+                        stage="charts",
+                        error_message=str(exc),
+                        raw_title=entry.title,
+                        raw_artist=entry.artist,
+                    ))
             session.commit()
 
-    console.print(f"[green]Charts ingestion complete.[/green] Songs: {total_songs}, Chart entries: {total_chart_entries}")
+    console.print(
+        f"[green]Charts ingestion complete.[/green] "
+        f"Songs: {total_songs}, Chart entries: {total_chart_entries}, "
+        f"Failed years: {len(fetch_errors)}"
+    )

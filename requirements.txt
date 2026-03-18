@@ -13,3 +13,5 @@ apscheduler
 python-dotenv
 rich
 structlog
+musicbrainzngs
+pylast

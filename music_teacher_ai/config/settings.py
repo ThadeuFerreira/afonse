@@ -10,11 +10,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "")
 GENIUS_ACCESS_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN", "")
+LASTFM_API_KEY = os.getenv("LASTFM_API_KEY", "")
+LASTFM_USER_AGENT = os.getenv("LASTFM_USER_AGENT", "MusicTeacherAI/0.1")
 
 # Storage paths
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "music.db")))
 FAISS_INDEX_PATH = Path(os.getenv("FAISS_INDEX_PATH", str(BASE_DIR / "data" / "embeddings.index")))
 PLAYLISTS_DIR = Path(os.getenv("PLAYLISTS_DIR", str(BASE_DIR / "data" / "playlists")))
+API_CACHE_DIR = Path(os.getenv("API_CACHE_DIR", str(BASE_DIR / "data" / "api_cache")))
 
 # Ingestion settings
 BILLBOARD_START_YEAR = 1960

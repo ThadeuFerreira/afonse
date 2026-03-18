@@ -3,6 +3,7 @@ from typing import Optional
 import lyricsgenius
 
 from music_teacher_ai.config.settings import GENIUS_ACCESS_TOKEN
+from music_teacher_ai.core.api_cache import cached_api
 
 
 _genius: lyricsgenius.Genius | None = None
@@ -21,6 +22,7 @@ def get_genius() -> lyricsgenius.Genius:
     return _genius
 
 
+@cached_api("genius")
 def fetch_lyrics(title: str, artist: str) -> Optional[str]:
     genius = get_genius()
     try:
