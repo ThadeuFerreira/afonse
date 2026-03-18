@@ -1,0 +1,880 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-111213141516",
+    "name": "Music Teacher API",
+    "description": "Automated test suite for the Music Teacher AI REST API.\n\nRun order matters: Playlists tests depend on `song_id` set by the Search folder, and playlist cleanup depends on `playlist_id` set by Playlists – create.\n\nRun with Newman:\n  newman run music-teacher-api.postman_collection.json -e music-teacher-api.postman_environment.json",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health – ping",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Body is {status: ok}', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.status).to.eql('ok');",
+                  "});",
+                  "pm.test('Response time under 500ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Database",
+      "item": [
+        {
+          "name": "Database – status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has expected fields', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('songs');",
+                  "    pm.expect(data).to.have.property('lyrics');",
+                  "    pm.expect(data).to.have.property('embeddings');",
+                  "    pm.expect(data).to.have.property('vocabulary_entries');",
+                  "});",
+                  "pm.test('Song count is a non-negative integer', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.songs).to.be.a('number');",
+                  "    pm.expect(data.songs).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Search – list songs (no filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/songs",
+              "host": ["{{base_url}}"],
+              "path": ["songs"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is an array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search – keyword (saves song_id)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/search?word=dream",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [{"key": "word", "value": "dream"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is an array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});",
+                  "pm.test('Each result has required fields', function () {",
+                  "    const data = pm.response.json();",
+                  "    if (data.length > 0) {",
+                  "        const song = data[0];",
+                  "        pm.expect(song).to.have.property('id');",
+                  "        pm.expect(song).to.have.property('title');",
+                  "        pm.expect(song).to.have.property('artist');",
+                  "    }",
+                  "});",
+                  "// Save first song_id for downstream tests",
+                  "const data = pm.response.json();",
+                  "if (data.length > 0) {",
+                  "    pm.environment.set('song_id', data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search – year range filter",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/search?year_min=1980&year_max=1989",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                {"key": "year_min", "value": "1980"},
+                {"key": "year_max", "value": "1989"}
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('All results are within year range', function () {",
+                  "    const data = pm.response.json();",
+                  "    data.forEach(function(song) {",
+                  "        if (song.year !== null) {",
+                  "            pm.expect(song.year).to.be.within(1980, 1989);",
+                  "        }",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search – semantic query",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\": \"songs about freedom and hope\", \"top_k\": 5}"
+            },
+            "url": {
+              "raw": "{{base_url}}/query",
+              "host": ["{{base_url}}"],
+              "path": ["query"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 503', function () {",
+                  "    pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Response is an array', function () {",
+                  "        pm.expect(pm.response.json()).to.be.an('array');",
+                  "    });",
+                  "    pm.test('Each result has score field', function () {",
+                  "        const data = pm.response.json();",
+                  "        if (data.length > 0) {",
+                  "            pm.expect(data[0]).to.have.property('score');",
+                  "        }",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search – get song by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/songs/{{song_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["songs", "{{song_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Song has expected fields', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('id');",
+                  "    pm.expect(data).to.have.property('title');",
+                  "    pm.expect(data).to.have.property('artist_name');",
+                  "    pm.expect(data).to.have.property('release_year');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Lyrics",
+      "item": [
+        {
+          "name": "Lyrics – get by song ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/lyrics/{{song_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lyrics", "{{song_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Response has lyrics_text field', function () {",
+                  "        const data = pm.response.json();",
+                  "        pm.expect(data).to.have.property('lyrics_text');",
+                  "        pm.expect(data.lyrics_text).to.be.a('string');",
+                  "        pm.expect(data.lyrics_text.length).to.be.above(0);",
+                  "    });",
+                  "    pm.test('Response has word_count field', function () {",
+                  "        const data = pm.response.json();",
+                  "        pm.expect(data).to.have.property('word_count');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Similar Lyrics",
+      "item": [
+        {
+          "name": "Similar – by song ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/similar/song/{{song_id}}?top_k=5",
+              "host": ["{{base_url}}"],
+              "path": ["similar", "song", "{{song_id}}"],
+              "query": [{"key": "top_k", "value": "5"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200, 404, or 503', function () {",
+                  "    pm.expect([200, 404, 503]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Response is an array', function () {",
+                  "        pm.expect(pm.response.json()).to.be.an('array');",
+                  "    });",
+                  "    pm.test('Results do not include the query song', function () {",
+                  "        const data = pm.response.json();",
+                  "        const queryId = parseInt(pm.environment.get('song_id'));",
+                  "        data.forEach(function(song) {",
+                  "            pm.expect(song.id).to.not.eql(queryId);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Similar – by text fragment",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\": \"dreaming about a better world\", \"top_k\": 5}"
+            },
+            "url": {
+              "raw": "{{base_url}}/similar/text",
+              "host": ["{{base_url}}"],
+              "path": ["similar", "text"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 503', function () {",
+                  "    pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Response is an array', function () {",
+                  "        pm.expect(pm.response.json()).to.be.an('array');",
+                  "    });",
+                  "    pm.test('Each result has score between 0 and 1', function () {",
+                  "        const data = pm.response.json();",
+                  "        data.forEach(function(song) {",
+                  "            pm.expect(song.score).to.be.within(0, 1);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Similar – min_score filter",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\": \"love and romance\", \"top_k\": 10, \"min_score\": 0.5}"
+            },
+            "url": {
+              "raw": "{{base_url}}/similar/text",
+              "host": ["{{base_url}}"],
+              "path": ["similar", "text"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 503', function () {",
+                  "    pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('All results meet min_score threshold', function () {",
+                  "        const data = pm.response.json();",
+                  "        data.forEach(function(song) {",
+                  "            pm.expect(song.score).to.be.at.least(0.5);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Playlists",
+      "item": [
+        {
+          "name": "Playlists – list (before create)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists",
+              "host": ["{{base_url}}"],
+              "path": ["playlists"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is an array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – create (saves playlist_id)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Playlist\",\n  \"description\": \"Created by automated test suite\",\n  \"query\": {\n    \"word\": \"dream\",\n    \"limit\": 5\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/playlists",
+              "host": ["{{base_url}}"],
+              "path": ["playlists"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has id and name', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('id');",
+                  "    pm.expect(data).to.have.property('name');",
+                  "    pm.expect(data.name).to.eql('Postman Test Playlist');",
+                  "});",
+                  "pm.test('Response has songs array', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('songs');",
+                  "    pm.expect(data.songs).to.be.an('array');",
+                  "});",
+                  "pm.test('Stored query is echoed back', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.query.word).to.eql('dream');",
+                  "});",
+                  "// Save playlist_id for downstream tests",
+                  "const data = pm.response.json();",
+                  "pm.environment.set('playlist_id', data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – create duplicate (409)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Playlist\",\n  \"query\": {\"word\": \"dream\", \"limit\": 5}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/playlists",
+              "host": ["{{base_url}}"],
+              "path": ["playlists"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – get by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Playlist has correct name', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.name).to.eql('Postman Test Playlist');",
+                  "});",
+                  "pm.test('Playlist has songs array', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.songs).to.be.an('array');",
+                  "});",
+                  "pm.test('Playlist has created_at', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('created_at');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – export M3U",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}/export?fmt=m3u",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}", "export"],
+              "query": [{"key": "fmt", "value": "m3u"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Content-Type is M3U', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('mpegurl');",
+                  "});",
+                  "pm.test('Body starts with #EXTM3U', function () {",
+                  "    pm.expect(pm.response.text()).to.match(/^#EXTM3U/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – export M3U8",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}/export?fmt=m3u8",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}", "export"],
+              "query": [{"key": "fmt", "value": "m3u8"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Body starts with #EXTM3U', function () {",
+                  "    pm.expect(pm.response.text()).to.match(/^#EXTM3U/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – export JSON",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}/export?fmt=json",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}", "export"],
+              "query": [{"key": "fmt", "value": "json"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Body is valid JSON with name field', function () {",
+                  "    const data = JSON.parse(pm.response.text());",
+                  "    pm.expect(data).to.have.property('name');",
+                  "    pm.expect(data).to.have.property('songs');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – refresh",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}", "refresh"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Refreshed playlist has same name', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.name).to.eql('Postman Test Playlist');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – delete",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Playlists – verify deleted (404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/{{playlist_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "{{playlist_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 after deletion', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Errors",
+      "item": [
+        {
+          "name": "Errors – lyrics not found (404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/lyrics/999999",
+              "host": ["{{base_url}}"],
+              "path": ["lyrics", "999999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Error response has detail field', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('detail');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Errors – song not found (404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/songs/999999",
+              "host": ["{{base_url}}"],
+              "path": ["songs", "999999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Error response has detail field', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('detail');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Errors – playlist not found (404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/nonexistent-playlist-xyz-99999",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "nonexistent-playlist-xyz-99999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Errors – export unsupported format (400)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/playlists/nonexistent-playlist-xyz-99999/export?fmt=xml",
+              "host": ["{{base_url}}"],
+              "path": ["playlists", "nonexistent-playlist-xyz-99999", "export"],
+              "query": [{"key": "fmt", "value": "xml"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 or 404', function () {",
+                  "    pm.expect([400, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Errors – invalid limit parameter (422)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/songs?limit=9999",
+              "host": ["{{base_url}}"],
+              "path": ["songs"],
+              "query": [{"key": "limit", "value": "9999"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422 Unprocessable Entity', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+
+  ]
+}

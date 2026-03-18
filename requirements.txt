@@ -1,0 +1,15 @@
+typer[all]
+fastapi
+uvicorn
+httpx
+spotipy
+billboard.py
+lyricsgenius
+sqlmodel
+sentence-transformers
+faiss-cpu
+nltk
+apscheduler
+python-dotenv
+rich
+structlog
