@@ -3,11 +3,23 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
+from music_teacher_ai.application.enrichment_service import EnrichRequest as EnrichServiceRequest
+from music_teacher_ai.application.enrichment_service import run_enrichment
+from music_teacher_ai.application.errors import ValidationError
+from music_teacher_ai.application.playlist_service import (
+    create_playlist as svc_create_playlist,
+    delete_playlist as svc_delete_playlist,
+    export_playlist as svc_export_playlist,
+    get_playlist as svc_get_playlist,
+    list_playlists as svc_list_playlists,
+    refresh_playlist as svc_refresh_playlist,
+)
+from music_teacher_ai.application.search_service import SearchRequest, keyword_search_with_expansion
+from music_teacher_ai.application.search_service import semantic_query as svc_semantic_query
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.database.models import Song, Artist, Lyrics
 from music_teacher_ai.playlists.models import PlaylistQuery
 from music_teacher_ai.search.keyword_search import search_songs
-from music_teacher_ai.search.semantic_search import semantic_search
 from sqlmodel import select
 
 _bearer = HTTPBearer()
@@ -84,23 +96,12 @@ def post_config(req: ConfigUpdateRequest):
     Only keys listed in ALLOWED_KEYS are accepted; unknown keys are rejected
     with 400 so callers cannot write arbitrary values into .env.
     """
-    from music_teacher_ai.config.credentials import ALLOWED_KEYS, update_env, current_status
+    from music_teacher_ai.application.config_service import update_credentials
 
-    unknown = set(req.credentials) - ALLOWED_KEYS
-    if unknown:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unknown credential key(s): {sorted(unknown)}. "
-                   f"Allowed: {sorted(ALLOWED_KEYS)}",
-        )
-    if not req.credentials:
-        raise HTTPException(status_code=400, detail="No credentials provided")
-
-    update_env(req.credentials)
-    return {
-        "updated": sorted(req.credentials.keys()),
-        "status": current_status(),
-    }
+    try:
+        return update_credentials(req.credentials)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/status")
@@ -158,16 +159,18 @@ def keyword_search(
     genre: Optional[str] = None,
     limit: int = Query(20, le=100),
 ):
-    return search_songs(
+    return keyword_search_with_expansion(
+        SearchRequest(
         word=word, year=year, year_min=year_min,
         year_max=year_max, artist=artist, genre=genre, limit=limit,
+        )
     )
 
 
 @app.post("/query")
 def semantic_query(req: QueryRequest):
     try:
-        return semantic_search(req.query, top_k=req.top_k)
+        return svc_semantic_query(req.query, top_k=req.top_k)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
@@ -208,29 +211,17 @@ def enrich(req: EnrichRequest):
     At least one of genre, artist, or year must be provided.
     Runs the full pipeline (metadata → lyrics → vocab → embeddings) on new songs.
     """
-    from music_teacher_ai.pipeline.enrichment import enrich_database
-
-    if not any([req.genre, req.artist, req.year]):
-        raise HTTPException(
-            status_code=422,
-            detail="Provide at least one of: genre, artist, year.",
-        )
-
     try:
-        result = enrich_database(
-            genre=req.genre,
-            artist=req.artist,
-            year=req.year,
-            limit=req.limit,
+        return run_enrichment(
+            EnrichServiceRequest(
+                genre=req.genre,
+                artist=req.artist,
+                year=req.year,
+                limit=req.limit,
+            )
         )
-    except ValueError as exc:
+    except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-
-    return {
-        "requested": req.limit,
-        "new_songs_inserted": result.new_songs_inserted,
-        "duplicates_skipped": result.duplicates_skipped,
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -245,43 +236,53 @@ class PlaylistCreateRequest(BaseModel):
 
 @app.post("/playlists", status_code=201)
 def create_playlist(req: PlaylistCreateRequest):
-    import music_teacher_ai.playlists.manager as pm
     try:
-        playlist = pm.create(name=req.name, description=req.description, query=req.query)
+        playlist = svc_create_playlist(
+            {
+                "name": req.name,
+                "description": req.description,
+                "word": req.query.word,
+                "year": req.query.year,
+                "year_min": req.query.year_min,
+                "year_max": req.query.year_max,
+                "artist": req.query.artist,
+                "genre": req.query.genre,
+                "semantic_query": req.query.semantic_query,
+                "similar_text": req.query.similar_text,
+                "similar_song_id": req.query.similar_song_id,
+                "limit": req.query.limit,
+            }
+        )
     except FileExistsError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
-    return playlist.model_dump()
+    return playlist
 
 
 @app.get("/playlists")
 def list_playlists():
-    import music_teacher_ai.playlists.manager as pm
-    return [p.model_dump() for p in pm.list_all()]
+    return svc_list_playlists()
 
 
 @app.get("/playlists/{playlist_id}")
 def get_playlist(playlist_id: str):
-    import music_teacher_ai.playlists.manager as pm
     try:
-        return pm.get(playlist_id).model_dump()
+        return svc_get_playlist(playlist_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
 
 @app.delete("/playlists/{playlist_id}", status_code=204)
 def delete_playlist(playlist_id: str):
-    import music_teacher_ai.playlists.manager as pm
     try:
-        pm.delete(playlist_id)
+        svc_delete_playlist(playlist_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
 
 @app.post("/playlists/{playlist_id}/refresh")
 def refresh_playlist(playlist_id: str):
-    import music_teacher_ai.playlists.manager as pm
     try:
-        return pm.refresh(playlist_id).model_dump()
+        return svc_refresh_playlist(playlist_id)
     except (FileNotFoundError, ValueError) as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
@@ -297,9 +298,8 @@ def export_playlist(
     playlist_id: str,
     fmt: str = Query("m3u", description="Export format: json, m3u, m3u8"),
 ):
-    import music_teacher_ai.playlists.manager as pm
     try:
-        content = pm.export_format(playlist_id, fmt)
+        content = svc_export_playlist(playlist_id, fmt)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:

@@ -70,3 +70,26 @@ class IngestionFailure(SQLModel, table=True):
     retry_count: int = Field(default=0)
     raw_title: Optional[str] = None
     raw_artist: Optional[str] = None
+
+
+class SongCandidate(SQLModel, table=True):
+    """Staging table for songs discovered by on-demand database expansion."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    artist: str
+    year: Optional[int] = None
+    genre: Optional[str] = None
+    source_api: str                                     # "lastfm" | "musicbrainz"
+    query_origin: str = Field(index=True)               # e.g. "genre:jazz", "artist:Adele"
+    created_at: str                                     # ISO-8601 UTC timestamp
+    status: str = Field(default="pending", index=True)  # pending | processed | rejected
+
+
+class BackgroundJob(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_type: str = Field(index=True)
+    query_origin: str = Field(index=True)
+    status: str = Field(default="queued", index=True)  # queued | running | done | failed
+    created_at: str
+    updated_at: str
+    details: Optional[str] = None

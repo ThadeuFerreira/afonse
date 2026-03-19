@@ -59,10 +59,12 @@ from rich.progress import (
 from sqlmodel import select
 
 from music_teacher_ai.database.models import Artist, Song
+from music_teacher_ai.database.repositories import SongRepository, normalize_text, song_key
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.reporter import PipelineReport
 
 console = Console()
+_song_repo = SongRepository()
 
 # ---------------------------------------------------------------------------
 # Tunables
@@ -150,21 +152,16 @@ class Variant:
 # ---------------------------------------------------------------------------
 
 def _normalize(s: str) -> str:
-    s = s.lower()
-    s = re.sub(r"[^\w\s]", "", s)
-    return re.sub(r"\s+", " ", s).strip()
+    return normalize_text(s)
 
 
 def _song_key(title: str, artist: str) -> str:
-    return f"{_normalize(artist)}||{_normalize(title)}"
+    return song_key(title, artist)
 
 
 def _load_existing_keys() -> set[str]:
     with get_session() as session:
-        rows = session.exec(
-            select(Song.title, Artist.name).join(Artist, Song.artist_id == Artist.id)
-        ).all()
-    return {_song_key(title, artist) for title, artist in rows}
+        return _song_repo.load_existing_keys(session)
 
 
 # ---------------------------------------------------------------------------
@@ -436,32 +433,77 @@ def _insert_candidates(
                 skipped += 1
                 continue
 
-            artist_row = session.exec(
-                select(Artist).where(Artist.name == c.artist)
-            ).first()
-            if not artist_row:
-                artist_row = Artist(name=c.artist)
-                session.add(artist_row)
-                session.flush()
+            artist_row = _song_repo.get_or_create_artist(session, c.artist)
 
             # Guard against a race on the same artist from a prior page
-            existing = session.exec(
-                select(Song)
-                .where(Song.title == c.title)
-                .where(Song.artist_id == artist_row.id)
-            ).first()
-            if existing:
+            if _song_repo.song_exists(session, title=c.title, artist_id=artist_row.id):
                 existing_keys.add(key)
                 skipped += 1
                 continue
 
-            session.add(Song(title=c.title, artist_id=artist_row.id, release_year=c.year))
-            existing_keys.add(key)
-            inserted += 1
+            try:
+                _song_repo.add_song(
+                    session,
+                    title=c.title,
+                    artist_id=artist_row.id,
+                    release_year=c.year,
+                )
+                existing_keys.add(key)
+                inserted += 1
+            except Exception:
+                # Protect idempotency on concurrent duplicate inserts.
+                skipped += 1
 
         session.commit()
 
     return inserted, skipped
+
+
+def _build_report(
+    result: EnrichmentResult,
+    *,
+    genre: Optional[str],
+    artist: Optional[str],
+    year: Optional[int],
+    limit: int,
+    max_requests: int,
+) -> tuple[PipelineReport, str]:
+    report = PipelineReport("enrichment")
+    report.set("requested_limit", limit)
+    report.set("max_requests", max_requests)
+    if genre:
+        report.set("genre", genre)
+    if artist:
+        report.set("artist", artist)
+    if year:
+        report.set("year", year)
+    criteria = " ".join(
+        filter(
+            None,
+            [
+                f"genre={genre!r}" if genre else "",
+                f"artist={artist!r}" if artist else "",
+                f"year={year}" if year else "",
+            ],
+        )
+    )
+    return report, criteria
+
+
+def _run_post_pipeline() -> None:
+    from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
+    from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
+    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
+    from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
+
+    console.print("[bold green]Step 1/4 – Enriching metadata...[/bold green]")
+    enrich_metadata()
+    console.print("[bold green]Step 2/4 – Downloading lyrics...[/bold green]")
+    download_lyrics()
+    console.print("[bold green]Step 3/4 – Building vocabulary index...[/bold green]")
+    build_vocabulary_index()
+    console.print("[bold green]Step 4/4 – Generating embeddings...[/bold green]")
+    generate_embeddings()
 
 
 # ---------------------------------------------------------------------------
@@ -508,21 +550,14 @@ def enrich_database(
     result = EnrichmentResult(
         genre=genre, artist=artist, year=year, requested_limit=limit,
     )
-    report = PipelineReport("enrichment")
-    report.set("requested_limit", limit)
-    report.set("max_requests", max_requests)
-    if genre:
-        report.set("genre", genre)
-    if artist:
-        report.set("artist", artist)
-    if year:
-        report.set("year", year)
-
-    criteria = " ".join(filter(None, [
-        f"genre={genre!r}" if genre else "",
-        f"artist={artist!r}" if artist else "",
-        f"year={year}" if year else "",
-    ]))
+    report, criteria = _build_report(
+        result,
+        genre=genre,
+        artist=artist,
+        year=year,
+        limit=limit,
+        max_requests=max_requests,
+    )
     console.print(f"[cyan]Enriching database: {criteria}  limit={limit}[/cyan]")
 
     existing_keys = _load_existing_keys()
@@ -666,23 +701,7 @@ def enrich_database(
     if run_pipeline and result.new_songs_inserted > 0:
         console.print()
         console.print("[bold green]Running pipeline on new songs...[/bold green]")
-
-        from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
-        from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
-        from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
-        from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
-
-        console.print("[bold green]Step 1/4 – Enriching metadata...[/bold green]")
-        enrich_metadata()
-
-        console.print("[bold green]Step 2/4 – Downloading lyrics...[/bold green]")
-        download_lyrics()
-
-        console.print("[bold green]Step 3/4 – Building vocabulary index...[/bold green]")
-        build_vocabulary_index()
-
-        console.print("[bold green]Step 4/4 – Generating embeddings...[/bold green]")
-        generate_embeddings()
+        _run_post_pipeline()
 
     report_path = report.save()
     console.print(f"[dim]Report: {report_path}[/dim]")

@@ -5,10 +5,21 @@ Run with:
     python -m music_teacher_ai.api.mcp_server
 """
 import json
-from typing import Any
+from typing import Any, Callable
 
+from music_teacher_ai.application.config_service import get_status as cfg_get_status
+from music_teacher_ai.application.config_service import update_credentials as cfg_update_credentials
+from music_teacher_ai.application.enrichment_service import EnrichRequest, run_enrichment
+from music_teacher_ai.application.errors import ValidationError
+from music_teacher_ai.application.playlist_service import (
+    create_playlist as svc_create_playlist,
+    export_playlist as svc_export_playlist,
+    get_playlist as svc_get_playlist,
+    list_playlists as svc_list_playlists,
+)
+from music_teacher_ai.application.search_service import SearchRequest, keyword_search_with_expansion
+from music_teacher_ai.application.search_service import semantic_query as svc_semantic_query
 from music_teacher_ai.search.keyword_search import search_songs
-from music_teacher_ai.search.semantic_search import semantic_search
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.database.models import Lyrics
 from sqlmodel import select
@@ -19,7 +30,9 @@ TOOLS = [
         "name": "search_songs",
         "description": (
             "Search songs in the local knowledge base by keyword, year, artist, or genre. "
-            "Returns a list of matching songs with metadata."
+            "Returns {results: [...], database_expansion_triggered: bool}. "
+            "When results are below the expansion threshold and genre/artist/year are provided, "
+            "a background discovery job is started automatically to grow the database."
         ),
         "input_schema": {
             "type": "object",
@@ -31,6 +44,23 @@ TOOLS = [
                 "artist": {"type": "string", "description": "Artist name filter"},
                 "genre": {"type": "string", "description": "Genre filter"},
                 "limit": {"type": "integer", "description": "Max results (default 20)"},
+            },
+        },
+    },
+    {
+        "name": "process_candidates",
+        "description": (
+            "Process pending song candidates from the staging table. "
+            "Inserts new songs into the main database and marks each candidate as "
+            "processed or rejected. Optionally filter by query_origin."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query_origin": {
+                    "type": "string",
+                    "description": "Filter by origin query, e.g. 'genre:jazz' (optional)",
+                },
             },
         },
     },
@@ -210,154 +240,146 @@ TOOLS = [
 ]
 
 
+def _handle_search_songs(inputs: dict[str, Any]) -> Any:
+    return keyword_search_with_expansion(
+        SearchRequest(
+            word=inputs.get("word"),
+            year=inputs.get("year"),
+            year_min=inputs.get("year_min"),
+            year_max=inputs.get("year_max"),
+            artist=inputs.get("artist"),
+            genre=inputs.get("genre"),
+            limit=inputs.get("limit", 20),
+        )
+    )
+
+
+def _handle_process_candidates(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.pipeline.expansion import process_candidates
+
+    return process_candidates(query_origin=inputs.get("query_origin"))
+
+
+def _handle_semantic_search(inputs: dict[str, Any]) -> Any:
+    return svc_semantic_query(inputs["query"], top_k=inputs.get("top_k", 10))
+
+
+def _handle_get_lyrics(inputs: dict[str, Any]) -> Any:
+    with get_session() as session:
+        lyr = session.exec(select(Lyrics).where(Lyrics.song_id == inputs["song_id"])).first()
+        if not lyr:
+            return {"error": "Lyrics not found"}
+        return {"song_id": lyr.song_id, "lyrics": lyr.lyrics_text}
+
+
+def _handle_find_similar_lyrics(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.search.similar_search import (
+        find_similar_by_song,
+        find_similar_by_text,
+        find_similar_by_title,
+    )
+
+    top_k = inputs.get("top_k", 10)
+    min_score = inputs.get("min_score", 0.0)
+    if "song_id" in inputs:
+        return find_similar_by_song(inputs["song_id"], top_k=top_k, min_score=min_score)
+    if "song_title" in inputs:
+        return find_similar_by_title(
+            inputs["song_title"],
+            artist=inputs.get("artist"),
+            top_k=top_k,
+            min_score=min_score,
+        )
+    if "text" in inputs:
+        return find_similar_by_text(inputs["text"], top_k=top_k, min_score=min_score)
+    return {"error": "Provide song_id, song_title, or text."}
+
+
+def _handle_find_vocabulary_examples(inputs: dict[str, Any]) -> Any:
+    result = []
+    for word in inputs.get("words", []):
+        result.append(
+            {
+                "word": word,
+                "songs": search_songs(
+                    word=word,
+                    year=inputs.get("year"),
+                    year_min=inputs.get("year_min"),
+                    year_max=inputs.get("year_max"),
+                    limit=inputs.get("limit", 10),
+                ),
+            }
+        )
+    return result
+
+
+def _handle_create_playlist(inputs: dict[str, Any]) -> Any:
+    return svc_create_playlist(inputs)
+
+
+def _handle_list_playlists(_: dict[str, Any]) -> Any:
+    return svc_list_playlists()
+
+
+def _handle_get_playlist(inputs: dict[str, Any]) -> Any:
+    return svc_get_playlist(inputs["playlist_id"])
+
+
+def _handle_export_playlist(inputs: dict[str, Any]) -> Any:
+    return svc_export_playlist(inputs["playlist_id"], inputs.get("format", "m3u"))
+
+
+def _handle_enrich_database(inputs: dict[str, Any]) -> Any:
+    return run_enrichment(
+        EnrichRequest(
+            genre=inputs.get("genre"),
+            artist=inputs.get("artist"),
+            year=inputs.get("year"),
+            limit=inputs.get("limit", 100),
+        )
+    )
+
+
+def _handle_get_config(_: dict[str, Any]) -> Any:
+    return cfg_get_status()
+
+
+def _handle_configure(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.config.credentials import verify_admin_token
+
+    if not verify_admin_token(inputs.get("admin_token", "")):
+        return {"error": "Invalid admin_token"}
+    credentials = inputs.get("credentials", {})
+    if not isinstance(credentials, dict):
+        return {"error": "credentials must be an object"}
+    return cfg_update_credentials(credentials)
+
+
+_HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
+    "search_songs": _handle_search_songs,
+    "process_candidates": _handle_process_candidates,
+    "semantic_search": _handle_semantic_search,
+    "get_lyrics": _handle_get_lyrics,
+    "find_similar_lyrics": _handle_find_similar_lyrics,
+    "find_vocabulary_examples": _handle_find_vocabulary_examples,
+    "create_playlist": _handle_create_playlist,
+    "list_playlists": _handle_list_playlists,
+    "get_playlist": _handle_get_playlist,
+    "export_playlist": _handle_export_playlist,
+    "enrich_database": _handle_enrich_database,
+    "get_config": _handle_get_config,
+    "configure": _handle_configure,
+}
+
+
 def dispatch(tool_name: str, inputs: dict[str, Any]) -> Any:
-    if tool_name == "search_songs":
-        return search_songs(**inputs)
-
-    if tool_name == "semantic_search":
-        return semantic_search(inputs["query"], top_k=inputs.get("top_k", 10))
-
-    if tool_name == "get_lyrics":
-        with get_session() as session:
-            lyr = session.exec(
-                select(Lyrics).where(Lyrics.song_id == inputs["song_id"])
-            ).first()
-            if not lyr:
-                return {"error": "Lyrics not found"}
-            return {"song_id": lyr.song_id, "lyrics": lyr.lyrics_text}
-
-    if tool_name == "find_similar_lyrics":
-        from music_teacher_ai.search.similar_search import (
-            find_similar_by_song,
-            find_similar_by_title,
-            find_similar_by_text,
-        )
-        top_k = inputs.get("top_k", 10)
-        min_score = inputs.get("min_score", 0.0)
-        try:
-            if "song_id" in inputs:
-                return find_similar_by_song(inputs["song_id"], top_k=top_k, min_score=min_score)
-            elif "song_title" in inputs:
-                return find_similar_by_title(
-                    inputs["song_title"],
-                    artist=inputs.get("artist"),
-                    top_k=top_k,
-                    min_score=min_score,
-                )
-            elif "text" in inputs:
-                return find_similar_by_text(inputs["text"], top_k=top_k, min_score=min_score)
-            else:
-                return {"error": "Provide song_id, song_title, or text."}
-        except (ValueError, FileNotFoundError) as exc:
-            return {"error": str(exc)}
-
-    if tool_name == "find_vocabulary_examples":
-        results = []
-        for word in inputs.get("words", []):
-            hits = search_songs(
-                word=word,
-                year=inputs.get("year"),
-                year_min=inputs.get("year_min"),
-                year_max=inputs.get("year_max"),
-                limit=inputs.get("limit", 10),
-            )
-            results.append({"word": word, "songs": hits})
-        return results
-
-    if tool_name == "create_playlist":
-        import music_teacher_ai.playlists.manager as pm
-        from music_teacher_ai.playlists.models import PlaylistQuery
-        try:
-            pq = PlaylistQuery(
-                word=inputs.get("word"),
-                year=inputs.get("year"),
-                year_min=inputs.get("year_min"),
-                year_max=inputs.get("year_max"),
-                artist=inputs.get("artist"),
-                genre=inputs.get("genre"),
-                semantic_query=inputs.get("semantic_query"),
-                similar_text=inputs.get("similar_text"),
-                similar_song_id=inputs.get("similar_song_id"),
-                limit=inputs.get("limit", 20),
-            )
-            playlist = pm.create(
-                name=inputs["name"],
-                description=inputs.get("description"),
-                query=pq,
-            )
-            return playlist.model_dump()
-        except (FileExistsError, ValueError) as exc:
-            return {"error": str(exc)}
-
-    if tool_name == "list_playlists":
-        import music_teacher_ai.playlists.manager as pm
-        return [p.model_dump() for p in pm.list_all()]
-
-    if tool_name == "get_playlist":
-        import music_teacher_ai.playlists.manager as pm
-        try:
-            return pm.get(inputs["playlist_id"]).model_dump()
-        except FileNotFoundError as exc:
-            return {"error": str(exc)}
-
-    if tool_name == "export_playlist":
-        import music_teacher_ai.playlists.manager as pm
-        try:
-            return pm.export_format(inputs["playlist_id"], inputs.get("format", "m3u"))
-        except (FileNotFoundError, ValueError) as exc:
-            return {"error": str(exc)}
-
-    if tool_name == "enrich_database":
-        from music_teacher_ai.pipeline.enrichment import enrich_database
-        genre = inputs.get("genre")
-        artist = inputs.get("artist")
-        year = inputs.get("year")
-        limit = inputs.get("limit", 100)
-        if not any([genre, artist, year]):
-            return {"error": "Provide at least one of: genre, artist, year."}
-        try:
-            result = enrich_database(
-                genre=genre,
-                artist=artist,
-                year=year,
-                limit=limit,
-            )
-            return {
-                "requested": limit,
-                "new_songs_inserted": result.new_songs_inserted,
-                "duplicates_skipped": result.duplicates_skipped,
-            }
-        except Exception as exc:
-            return {"error": str(exc)}
-
-    if tool_name == "get_config":
-        from music_teacher_ai.config.credentials import current_status
-        return current_status()
-
-    if tool_name == "configure":
-        from music_teacher_ai.config.credentials import (
-            verify_admin_token,
-            ALLOWED_KEYS,
-            update_env,
-            current_status,
-        )
-        if not verify_admin_token(inputs.get("admin_token", "")):
-            return {"error": "Invalid admin_token"}
-        credentials = inputs.get("credentials", {})
-        if not isinstance(credentials, dict) or not credentials:
-            return {"error": "credentials must be a non-empty object"}
-        unknown = set(credentials) - ALLOWED_KEYS
-        if unknown:
-            return {
-                "error": f"Unknown key(s): {sorted(unknown)}. Allowed: {sorted(ALLOWED_KEYS)}"
-            }
-        update_env(credentials)
-        return {
-            "updated": sorted(credentials.keys()),
-            "status": current_status(),
-        }
-
-    return {"error": f"Unknown tool: {tool_name}"}
+    handler = _HANDLERS.get(tool_name)
+    if not handler:
+        return {"error": f"Unknown tool: {tool_name}"}
+    try:
+        return handler(inputs)
+    except (FileNotFoundError, ValueError, ValidationError) as exc:
+        return {"error": str(exc)}
 
 
 if __name__ == "__main__":

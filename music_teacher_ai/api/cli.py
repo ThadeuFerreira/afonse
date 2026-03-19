@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -6,6 +7,18 @@ from rich.console import Console
 from rich.table import Table
 from sqlmodel import select, func
 
+from music_teacher_ai.application.enrichment_service import EnrichRequest, run_enrichment
+from music_teacher_ai.application.errors import ValidationError
+from music_teacher_ai.application.playlist_service import (
+    create_playlist as svc_create_playlist,
+    delete_playlist as svc_delete_playlist,
+    export_playlist as svc_export_playlist,
+    get_playlist as svc_get_playlist,
+    list_playlists as svc_list_playlists,
+    refresh_playlist as svc_refresh_playlist,
+)
+from music_teacher_ai.application.search_service import SearchRequest, keyword_search_with_expansion
+from music_teacher_ai.application.search_service import semantic_query as svc_semantic_query
 from music_teacher_ai.database.sqlite import create_db, get_session
 from music_teacher_ai.database.models import Song, Lyrics, Embedding, Chart, IngestionFailure
 
@@ -13,6 +26,15 @@ app = typer.Typer(help="Music Teacher AI – manage and query the local knowledg
 playlist_app = typer.Typer(help="Create and manage song playlists.")
 app.add_typer(playlist_app, name="playlist")
 console = Console()
+
+
+@app.command()
+def migrate_db():
+    """Run explicit database migrations and integrity index creation."""
+    from music_teacher_ai.database.sqlite import migrate_db as run_migrations
+
+    run_migrations()
+    console.print("[green]Database migration complete.[/green]")
 
 
 @app.command()
@@ -213,26 +235,22 @@ def enrich(
 
       music-teacher enrich --genre jazz --limit 200
     """
-    from music_teacher_ai.pipeline.enrichment import enrich_database
-
-    if not any([genre, artist, year]):
-        console.print("[red]Provide at least one of --genre, --artist, or --year.[/red]")
-        raise typer.Exit(1)
-
     try:
-        result = enrich_database(
-            genre=genre,
-            artist=artist,
-            year=year,
-            limit=limit,
-            max_pages=max_pages,
-            run_pipeline=not no_pipeline,
+        result = run_enrichment(
+            EnrichRequest(
+                genre=genre,
+                artist=artist,
+                year=year,
+                limit=limit,
+                max_pages=max_pages,
+                run_pipeline=not no_pipeline,
+            )
         )
-    except ValueError as exc:
+    except ValidationError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1)
 
-    if result.new_songs_inserted == 0:
+    if result["new_songs_inserted"] == 0:
         console.print("[yellow]No new songs were added.[/yellow]")
 
 
@@ -263,21 +281,31 @@ def search(
     year_min: Optional[int] = typer.Option(None),
     year_max: Optional[int] = typer.Option(None),
     artist: Optional[str] = typer.Option(None),
+    genre: Optional[str] = typer.Option(None),
     limit: int = typer.Option(20),
 ):
     """Search the knowledge base."""
     if query:
-        from music_teacher_ai.search.semantic_search import semantic_search
-        results = semantic_search(query, top_k=limit)
+        results = svc_semantic_query(query, top_k=limit)
     else:
-        from music_teacher_ai.search.keyword_search import search_songs
-        results = search_songs(
-            word=word, year=year, year_min=year_min,
-            year_max=year_max, artist=artist, limit=limit,
+        response = keyword_search_with_expansion(
+            SearchRequest(
+                word=word,
+                year=year,
+                year_min=year_min,
+                year_max=year_max,
+                artist=artist,
+                genre=genre,
+                limit=limit,
+            )
         )
+        results = response["results"]
 
     if not results:
-        console.print("[yellow]No results found.[/yellow]")
+        console.print("[yellow]No results found locally.[/yellow]")
+        from music_teacher_ai.pipeline.expansion import EXPANSION_THRESHOLD, trigger_expansion
+        if trigger_expansion(genre=genre, artist=artist, year=year, word=word):
+            console.print("[dim]Triggering discovery job — future searches may return new songs.[/dim]")
         return
 
     table = Table()
@@ -564,30 +592,31 @@ def playlist_create(
     limit: int = typer.Option(20, help="Max songs in playlist"),
 ):
     """Create a playlist from a search query."""
-    from music_teacher_ai.playlists.models import PlaylistQuery
-    import music_teacher_ai.playlists.manager as pm
-
-    pq = PlaylistQuery(
-        word=word,
-        year=year,
-        year_min=year_min,
-        year_max=year_max,
-        artist=artist,
-        genre=genre,
-        semantic_query=query,
-        similar_text=similar_text,
-        similar_song_id=similar_song_id,
-        limit=limit,
-    )
-
     try:
-        playlist = pm.create(name=name, description=description, query=pq)
+        playlist = svc_create_playlist(
+            {
+                "name": name,
+                "description": description,
+                "word": word,
+                "year": year,
+                "year_min": year_min,
+                "year_max": year_max,
+                "artist": artist,
+                "genre": genre,
+                "semantic_query": query,
+                "similar_text": similar_text,
+                "similar_song_id": similar_song_id,
+                "limit": limit,
+            }
+        )
     except FileExistsError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1)
+    from music_teacher_ai.playlists.models import Playlist
 
-    _print_playlist(playlist)
-    console.print(f"[green]Saved to data/playlists/{playlist.id}/[/green]")
+    playlist_model = Playlist.model_validate(playlist)
+    _print_playlist(playlist_model)
+    console.print(f"[green]Saved to data/playlists/{playlist_model.id}/[/green]")
 
 
 @playlist_app.command("show")
@@ -595,9 +624,10 @@ def playlist_show(
     playlist_id: str = typer.Argument(..., help="Playlist slug (from 'playlist list')"),
 ):
     """Display a saved playlist."""
-    import music_teacher_ai.playlists.manager as pm
     try:
-        playlist = pm.get(playlist_id)
+        from music_teacher_ai.playlists.models import Playlist
+
+        playlist = Playlist.model_validate(svc_get_playlist(playlist_id))
     except FileNotFoundError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1)
@@ -607,9 +637,9 @@ def playlist_show(
 @playlist_app.command("list")
 def playlist_list():
     """List all saved playlists."""
-    import music_teacher_ai.playlists.manager as pm
+    from music_teacher_ai.playlists.models import Playlist
 
-    playlists = pm.list_all()
+    playlists = [Playlist.model_validate(p) for p in svc_list_playlists()]
     if not playlists:
         console.print("[yellow]No playlists found.[/yellow]")
         return
@@ -630,12 +660,10 @@ def playlist_delete(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
 ):
     """Delete a saved playlist."""
-    import music_teacher_ai.playlists.manager as pm
-
     if not yes:
         typer.confirm(f"Delete playlist '{playlist_id}'?", abort=True)
     try:
-        pm.delete(playlist_id)
+        svc_delete_playlist(playlist_id)
         console.print(f"[green]Deleted '{playlist_id}'.[/green]")
     except FileNotFoundError as exc:
         console.print(f"[red]{exc}[/red]")
@@ -649,10 +677,8 @@ def playlist_export(
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (default: print to stdout)"),
 ):
     """Export a playlist to a specific format."""
-    import music_teacher_ai.playlists.manager as pm
-
     try:
-        content = pm.export_format(playlist_id, fmt)
+        content = svc_export_playlist(playlist_id, fmt)
     except (FileNotFoundError, ValueError) as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1)
@@ -669,10 +695,10 @@ def playlist_refresh(
     playlist_id: str = typer.Argument(..., help="Playlist slug to refresh"),
 ):
     """Re-run the stored query and update the playlist with fresh results."""
-    import music_teacher_ai.playlists.manager as pm
-
     try:
-        playlist = pm.refresh(playlist_id)
+        from music_teacher_ai.playlists.models import Playlist
+
+        playlist = Playlist.model_validate(svc_refresh_playlist(playlist_id))
     except (FileNotFoundError, ValueError) as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1)

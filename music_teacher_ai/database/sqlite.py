@@ -40,7 +40,25 @@ def _migrate():
                             f"ALTER TABLE {table.name} ADD COLUMN {column.name} {col_type}"
                         )
                     )
-            conn.commit()
+        # Core integrity indexes for idempotent writes and faster duplicate checks.
+        conn.execute(
+            sqlalchemy.text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_song_title_artist ON song (title, artist_id)"
+            )
+        )
+        conn.execute(
+            sqlalchemy.text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_songcandidate_identity "
+                "ON songcandidate (title, artist, query_origin)"
+            )
+        )
+        conn.execute(
+            sqlalchemy.text(
+                "CREATE INDEX IF NOT EXISTS ix_backgroundjob_query_status "
+                "ON backgroundjob (query_origin, status)"
+            )
+        )
+        conn.commit()
 
 
 def create_db():
@@ -52,10 +70,7 @@ def get_session() -> Session:
     return Session(engine)
 
 
-# Run on every startup so existing databases stay in sync with model changes
-# even when create_db() is not called (e.g. running search or enrich commands).
-if DATABASE_PATH.exists():
-    try:
-        _migrate()
-    except Exception:
-        pass  # Tables may not exist yet; create_db() will handle creation.
+def migrate_db() -> None:
+    """Explicit migration entrypoint to surface migration failures."""
+    SQLModel.metadata.create_all(engine)
+    _migrate()
