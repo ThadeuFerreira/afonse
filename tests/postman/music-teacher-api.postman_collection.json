@@ -136,11 +136,16 @@
                   "pm.test('Status 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Response is an array', function () {",
-                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "pm.test('Response has results wrapper', function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('results');",
+                  "    pm.expect(data.results).to.be.an('array');",
+                  "    pm.expect(data).to.have.property('database_expansion_triggered');",
+                  "    pm.expect(data.database_expansion_triggered).to.be.a('boolean');",
                   "});",
                   "pm.test('Each result has required fields', function () {",
-                  "    const data = pm.response.json();",
+                  "    const payload = pm.response.json();",
+                  "    const data = payload.results;",
                   "    if (data.length > 0) {",
                   "        const song = data[0];",
                   "        pm.expect(song).to.have.property('id');",
@@ -149,7 +154,7 @@
                   "    }",
                   "});",
                   "// Save first song_id for downstream tests",
-                  "const data = pm.response.json();",
+                  "const data = pm.response.json().results;",
                   "if (data.length > 0) {",
                   "    pm.environment.set('song_id', data[0].id);",
                   "}"
@@ -182,7 +187,9 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "pm.test('All results are within year range', function () {",
-                  "    const data = pm.response.json();",
+                  "    const payload = pm.response.json();",
+                  "    pm.expect(payload).to.have.property('results');",
+                  "    const data = payload.results;",
                   "    data.forEach(function(song) {",
                   "        if (song.year !== null) {",
                   "            pm.expect(song.year).to.be.within(1980, 1989);",
@@ -260,6 +267,157 @@
                   "    pm.expect(data).to.have.property('artist_name');",
                   "    pm.expect(data).to.have.property('release_year');",
                   "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Education",
+      "item": [
+        {
+          "name": "Education – exercise by song ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/education/exercise/{{song_id}}?num_blanks=8&min_word_length=4",
+              "host": ["{{base_url}}"],
+              "path": ["education", "exercise", "{{song_id}}"],
+              "query": [
+                {"key": "num_blanks", "value": "8"},
+                {"key": "min_word_length", "value": "4"}
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('Exercise has expected fields', function () {",
+                  "        pm.expect(data).to.have.property('song_id');",
+                  "        pm.expect(data).to.have.property('text_with_blanks');",
+                  "        pm.expect(data).to.have.property('answer_key');",
+                  "        pm.expect(data).to.have.property('blanks');",
+                  "    });",
+                  "    pm.test('Blanks is an array', function () {",
+                  "        pm.expect(data.blanks).to.be.an('array');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Education – vocabulary by song ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/education/vocabulary/{{song_id}}?min_word_length=3",
+              "host": ["{{base_url}}"],
+              "path": ["education", "vocabulary", "{{song_id}}"],
+              "query": [{"key": "min_word_length", "value": "3"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('Vocabulary response has expected fields', function () {",
+                  "        pm.expect(data).to.have.property('song_id');",
+                  "        pm.expect(data).to.have.property('dominant_level');",
+                  "        pm.expect(data).to.have.property('level_counts');",
+                  "        pm.expect(data).to.have.property('words_by_level');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Education – phrasal verbs by song ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/education/phrasal-verbs/{{song_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["education", "phrasal-verbs", "{{song_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('Phrasal verbs response has expected fields', function () {",
+                  "        pm.expect(data).to.have.property('song_id');",
+                  "        pm.expect(data).to.have.property('total_matches');",
+                  "        pm.expect(data).to.have.property('matches');",
+                  "        pm.expect(data.matches).to.be.an('array');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Education – complete lesson",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"song_id\": {{song_id}}, \"num_blanks\": 8, \"min_word_length\": 4}"
+            },
+            "url": {
+              "raw": "{{base_url}}/education/lesson",
+              "host": ["{{base_url}}"],
+              "path": ["education", "lesson"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('Lesson payload has composite sections', function () {",
+                  "        pm.expect(data).to.have.property('song_id');",
+                  "        pm.expect(data).to.have.property('exercise');",
+                  "        pm.expect(data).to.have.property('vocabulary');",
+                  "        pm.expect(data).to.have.property('phrasal_verbs');",
+                  "    });",
+                  "}"
                 ]
               }
             }

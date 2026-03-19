@@ -8,6 +8,7 @@ def create_playlist(inputs: dict[str, Any]) -> dict[str, Any]:
 
     pq = PlaylistQuery(
         word=inputs.get("word"),
+        song=inputs.get("song"),
         year=inputs.get("year"),
         year_min=inputs.get("year_min"),
         year_max=inputs.get("year_max"),

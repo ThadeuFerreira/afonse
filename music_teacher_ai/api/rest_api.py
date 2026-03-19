@@ -242,6 +242,7 @@ def create_playlist(req: PlaylistCreateRequest):
                 "name": req.name,
                 "description": req.description,
                 "word": req.query.word,
+                "song": req.query.song,
                 "year": req.query.year,
                 "year_min": req.query.year_min,
                 "year_max": req.query.year_max,

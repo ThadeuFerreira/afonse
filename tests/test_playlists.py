@@ -210,3 +210,229 @@ def test_list_playlists(tmp_path, monkeypatch):
     all_playlists = pm.list_all()
     names = {p.name for p in all_playlists}
     assert {"Alpha", "Beta"}.issubset(names)
+
+
+# ---------------------------------------------------------------------------
+# New fields: isrc_code, query_origin, song_count
+# ---------------------------------------------------------------------------
+
+def test_playlist_song_has_isrc_field():
+    s = PlaylistSong(song_id=1, title="T", artist="A", isrc_code="USRC17607839")
+    assert s.isrc_code == "USRC17607839"
+
+
+def test_playlist_song_isrc_defaults_none():
+    s = PlaylistSong(song_id=1, title="T", artist="A")
+    assert s.isrc_code is None
+
+
+def test_isrc_serialised_in_json(sample_playlist):
+    # Add ISRC to one song and verify it appears in JSON export
+    sample_playlist.songs[0].isrc_code = "USABC1234567"
+    data = json.loads(to_json(sample_playlist))
+    assert data["songs"][0]["isrc_code"] == "USABC1234567"
+
+
+def test_playlist_has_query_origin_field():
+    p = Playlist(id="x", name="X", created_at="2026-01-01", query_origin="genre:rock")
+    assert p.query_origin == "genre:rock"
+
+
+def test_playlist_query_origin_defaults_none():
+    p = Playlist(id="x", name="X", created_at="2026-01-01")
+    assert p.query_origin is None
+
+
+def test_song_count_property(sample_playlist):
+    assert sample_playlist.song_count == 3
+
+
+def test_song_count_empty():
+    p = Playlist(id="x", name="X", created_at="2026-01-01")
+    assert p.song_count == 0
+
+
+def test_query_origin_stored_on_create(tmp_path, monkeypatch):
+    monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
+    import importlib
+    import music_teacher_ai.config.settings as s
+    import music_teacher_ai.playlists.manager as pm
+    importlib.reload(s)
+    importlib.reload(pm)
+
+    songs = [PlaylistSong(song_id=1, title="Song", artist="X", year=2000)]
+    pl = pm.create(name="Origin Test", songs=songs)
+    assert pl.query_origin == "manual"
+
+
+def test_query_origin_from_query_object():
+    q = PlaylistQuery(word="dream", genre="rock")
+    origin = q.to_origin()
+    assert "word:dream" in origin
+    assert "genre:rock" in origin
+
+
+def test_query_origin_semantic():
+    q = PlaylistQuery(semantic_query="songs about freedom")
+    assert "semantic:songs about freedom" in q.to_origin()
+
+
+def test_query_origin_empty_is_manual():
+    q = PlaylistQuery()
+    assert q.to_origin() == "manual"
+
+
+# ---------------------------------------------------------------------------
+# Max playlist size (100-song cap)
+# ---------------------------------------------------------------------------
+
+def test_playlist_size_cap(tmp_path, monkeypatch):
+    """Creating a playlist with 150 songs must silently cap at 100."""
+    monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
+    import importlib
+    import music_teacher_ai.config.settings as s
+    import music_teacher_ai.playlists.manager as pm
+    from music_teacher_ai.playlists.models import _MAX_PLAYLIST_SIZE
+    importlib.reload(s)
+    importlib.reload(pm)
+
+    songs = [PlaylistSong(song_id=i, title=f"Song {i}", artist="X") for i in range(150)]
+    pl = pm.create(name="Huge Playlist", songs=songs)
+    assert len(pl.songs) == _MAX_PLAYLIST_SIZE
+    assert pl.song_count == _MAX_PLAYLIST_SIZE
+
+
+def test_max_playlist_size_constant():
+    from music_teacher_ai.playlists.models import _MAX_PLAYLIST_SIZE
+    assert _MAX_PLAYLIST_SIZE == 100
+
+
+# ---------------------------------------------------------------------------
+# PlaylistQuery.song field
+# ---------------------------------------------------------------------------
+
+def test_playlist_query_has_song_field():
+    q = PlaylistQuery(song="Dream On")
+    assert q.song == "Dream On"
+
+
+def test_song_field_in_origin():
+    q = PlaylistQuery(song="Dream On")
+    assert "song:Dream On" in q.to_origin()
+
+
+# ---------------------------------------------------------------------------
+# _search_by_title — Song.title ilike, not VocabularyIndex
+# ---------------------------------------------------------------------------
+
+def test_search_by_title_matches_title(tmp_path, monkeypatch):
+    """_search_by_title must match Song.title, not lyrics vocabulary."""
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    import importlib
+    import music_teacher_ai.config.settings as _s
+    import music_teacher_ai.database.sqlite as _db
+    importlib.reload(_s)
+    importlib.reload(_db)
+    _db.create_db()
+
+    from music_teacher_ai.database.models import Artist, Song
+    from music_teacher_ai.database.sqlite import get_session
+
+    with get_session() as session:
+        artist = Artist(name="Aerosmith")
+        session.add(artist)
+        session.flush()
+        session.add(Song(title="Dream On", artist_id=artist.id, release_year=1973))
+        session.add(Song(title="Sweet Emotion", artist_id=artist.id, release_year=1975))
+        session.commit()
+
+    from music_teacher_ai.playlists.manager import _search_by_title
+    importlib.reload(__import__("music_teacher_ai.playlists.manager", fromlist=["_search_by_title"]))
+    from music_teacher_ai.playlists.manager import _search_by_title
+
+    results = _search_by_title("Dream On", limit=10)
+    assert len(results) == 1
+    assert results[0]["title"] == "Dream On"
+
+
+def test_search_by_title_case_insensitive(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    import importlib
+    import music_teacher_ai.config.settings as _s
+    import music_teacher_ai.database.sqlite as _db
+    importlib.reload(_s)
+    importlib.reload(_db)
+    _db.create_db()
+
+    from music_teacher_ai.database.models import Artist, Song
+    from music_teacher_ai.database.sqlite import get_session
+
+    with get_session() as session:
+        artist = Artist(name="Aerosmith")
+        session.add(artist)
+        session.flush()
+        session.add(Song(title="Dream On", artist_id=artist.id, release_year=1973))
+        session.commit()
+
+    from music_teacher_ai.playlists.manager import _search_by_title
+    assert len(_search_by_title("dream on", limit=10)) == 1
+    assert len(_search_by_title("DREAM", limit=10)) == 1
+
+
+def test_search_by_title_partial_match(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    import importlib
+    import music_teacher_ai.config.settings as _s
+    import music_teacher_ai.database.sqlite as _db
+    importlib.reload(_s)
+    importlib.reload(_db)
+    _db.create_db()
+
+    from music_teacher_ai.database.models import Artist, Song
+    from music_teacher_ai.database.sqlite import get_session
+
+    with get_session() as session:
+        artist = Artist(name="Various")
+        session.add(artist)
+        session.flush()
+        session.add(Song(title="Dream On", artist_id=artist.id))
+        session.add(Song(title="Sweet Dreams", artist_id=artist.id))
+        session.add(Song(title="Daydream", artist_id=artist.id))
+        session.add(Song(title="Yesterday", artist_id=artist.id))
+        session.commit()
+
+    from music_teacher_ai.playlists.manager import _search_by_title
+    results = _search_by_title("dream", limit=10)
+    titles = {r["title"] for r in results}
+    assert titles == {"Dream On", "Sweet Dreams", "Daydream"}
+    assert "Yesterday" not in titles
+
+
+def test_run_query_song_uses_title_not_vocabulary(tmp_path, monkeypatch):
+    """When PlaylistQuery.song is set, _run_query must NOT touch VocabularyIndex."""
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
+    import importlib
+    import music_teacher_ai.config.settings as _s
+    import music_teacher_ai.database.sqlite as _db
+    importlib.reload(_s)
+    importlib.reload(_db)
+    _db.create_db()
+
+    from music_teacher_ai.database.models import Artist, Song
+    from music_teacher_ai.database.sqlite import get_session
+
+    with get_session() as session:
+        artist = Artist(name="Aerosmith")
+        session.add(artist)
+        session.flush()
+        # Title contains multi-word phrase that would never be in VocabularyIndex
+        session.add(Song(title="Dream On", artist_id=artist.id, release_year=1973))
+        session.commit()
+
+    import music_teacher_ai.playlists.manager as pm
+    importlib.reload(pm)
+
+    results = pm._run_query(PlaylistQuery(song="Dream On", limit=10))
+    assert len(results) == 1
+    assert results[0].title == "Dream On"

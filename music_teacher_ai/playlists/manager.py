@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from music_teacher_ai.config.settings import PLAYLISTS_DIR
-from music_teacher_ai.playlists.models import Playlist, PlaylistQuery, PlaylistSong
+from music_teacher_ai.playlists.models import Playlist, PlaylistQuery, PlaylistSong, _MAX_PLAYLIST_SIZE
 from music_teacher_ai.playlists.exporters import export_all
 
 
@@ -35,8 +35,8 @@ def _load_json(path: Path) -> Playlist:
     return Playlist.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def _enrich_with_spotify_id(song_dicts: list[dict]) -> list[PlaylistSong]:
-    """Look up spotify_id for each song and return PlaylistSong objects."""
+def _enrich_with_ids(song_dicts: list[dict]) -> list[PlaylistSong]:
+    """Look up spotify_id and isrc_code for each song and return PlaylistSong objects."""
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.database.models import Song
 
@@ -51,26 +51,57 @@ def _enrich_with_spotify_id(song_dicts: list[dict]) -> list[PlaylistSong]:
                     artist=s["artist"],
                     year=s.get("year"),
                     spotify_id=db_song.spotify_id if db_song else None,
+                    isrc_code=db_song.isrc if db_song else None,
                 )
             )
     return result
 
 
+def _search_by_title(title: str, limit: int) -> list[dict]:
+    """Filter Song.title with a case-insensitive substring match."""
+    from music_teacher_ai.database.sqlite import get_session
+    from music_teacher_ai.database.models import Song, Artist
+    from sqlmodel import select
+
+    with get_session() as session:
+        songs = session.exec(
+            select(Song)
+            .where(Song.title.ilike(f"%{title}%"))
+            .limit(limit)
+        ).all()
+        results = []
+        for song in songs:
+            artist_obj = session.get(Artist, song.artist_id)
+            results.append({
+                "id": song.id,
+                "title": song.title,
+                "artist": artist_obj.name if artist_obj else "",
+                "year": song.release_year,
+                "genre": song.genre,
+                "popularity": song.popularity,
+            })
+        return results
+
+
 def _run_query(query: PlaylistQuery) -> list[PlaylistSong]:
-    """Execute the stored query and return enriched PlaylistSong list."""
+    """Execute the stored query and return enriched PlaylistSong list (max _MAX_PLAYLIST_SIZE)."""
+    capped_limit = min(query.limit, _MAX_PLAYLIST_SIZE)
     raw: list[dict] = []
 
     if query.similar_text:
         from music_teacher_ai.search.similar_search import find_similar_by_text
-        raw = find_similar_by_text(query.similar_text, top_k=query.limit)
+        raw = find_similar_by_text(query.similar_text, top_k=capped_limit)
 
     elif query.similar_song_id is not None:
         from music_teacher_ai.search.similar_search import find_similar_by_song
-        raw = find_similar_by_song(query.similar_song_id, top_k=query.limit)
+        raw = find_similar_by_song(query.similar_song_id, top_k=capped_limit)
 
     elif query.semantic_query:
         from music_teacher_ai.search.semantic_search import semantic_search
-        raw = semantic_search(query.semantic_query, top_k=query.limit)
+        raw = semantic_search(query.semantic_query, top_k=capped_limit)
+
+    elif query.song:
+        raw = _search_by_title(query.song, limit=capped_limit)
 
     else:
         from music_teacher_ai.search.keyword_search import search_songs
@@ -81,10 +112,10 @@ def _run_query(query: PlaylistQuery) -> list[PlaylistSong]:
             year_max=query.year_max,
             artist=query.artist,
             genre=query.genre,
-            limit=query.limit,
+            limit=capped_limit,
         )
 
-    return _enrich_with_spotify_id(raw)
+    return _enrich_with_ids(raw[:capped_limit])
 
 
 # ---------------------------------------------------------------------------
@@ -121,8 +152,9 @@ def create(
         name=name,
         description=description,
         created_at=date.today().isoformat(),
+        query_origin=query.to_origin() if query else "manual",
         query=query,
-        songs=resolved_songs,
+        songs=resolved_songs[:_MAX_PLAYLIST_SIZE],
     )
 
     export_all(playlist, dest)

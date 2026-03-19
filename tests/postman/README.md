@@ -84,7 +84,8 @@ newman run tests/postman/music-teacher-api.postman_collection.json \
 |--------|--------------|
 | **Health** | `GET /health` — server reachability |
 | **Database** | `GET /status` — DB counts and field presence |
-| **Search** | `GET /songs`, `GET /search`, `POST /query` |
+| **Search** | `GET /songs`, `GET /search` (`{results, database_expansion_triggered}`), `POST /query` |
+| **Education** | `GET /education/exercise/{id}`, `GET /education/vocabulary/{id}`, `GET /education/phrasal-verbs/{id}`, `POST /education/lesson` |
 | **Lyrics** | `GET /lyrics/{id}` — field presence |
 | **Similar Lyrics** | `GET /similar/song/{id}`, `POST /similar/text` |
 | **Playlists** | Full create → get → export → refresh → delete lifecycle |
@@ -94,7 +95,7 @@ newman run tests/postman/music-teacher-api.postman_collection.json \
 
 ## Test Execution Order
 
-Run the folders in the order they appear in the collection. The **Search** folder saves `song_id` and the **Playlists** folder saves `playlist_id` as environment variables for downstream tests.
+Run the folders in the order they appear in the collection. The **Search** folder saves `song_id`, the **Education/Lyrics/Similar Lyrics** folders reuse it, and the **Playlists** folder saves `playlist_id` for downstream tests.
 
 If you run individual folders out of order, set `song_id` manually in the environment to a valid song ID from your database.
 

@@ -698,6 +698,7 @@ def playlist_create(
     name: str = typer.Argument(..., help="Playlist name, e.g. 'Dream Vocabulary'"),
     description: Optional[str] = typer.Option(None, "--description", "-d"),
     word: Optional[str] = typer.Option(None, help="Keyword to search in lyrics"),
+    song: Optional[str] = typer.Option(None, "--song", help="Song title to search for, e.g. 'Dream On'"),
     year: Optional[int] = typer.Option(None),
     year_min: Optional[int] = typer.Option(None),
     year_max: Optional[int] = typer.Option(None),
@@ -706,7 +707,7 @@ def playlist_create(
     query: Optional[str] = typer.Option(None, "--query", "-q", help="Semantic/theme query"),
     similar_text: Optional[str] = typer.Option(None, "--similar-text", help="Text to find similar songs for"),
     similar_song_id: Optional[int] = typer.Option(None, "--similar-song-id"),
-    limit: int = typer.Option(20, help="Max songs in playlist"),
+    limit: int = typer.Option(20, help="Max songs in playlist (hard cap: 100)"),
 ):
     """Create a playlist from a search query."""
     try:
@@ -715,6 +716,7 @@ def playlist_create(
                 "name": name,
                 "description": description,
                 "word": word,
+                "song": song,
                 "year": year,
                 "year_min": year_min,
                 "year_max": year_max,
