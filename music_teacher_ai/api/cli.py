@@ -189,6 +189,53 @@ def _upsert_track(sp, item: dict) -> None:
         session.commit()
 
 
+@app.command()
+def enrich(
+    genre: Optional[str] = typer.Option(None, "--genre", help="Last.fm genre tag to search, e.g. 'jazz'."),
+    artist: Optional[str] = typer.Option(None, "--artist", help="Artist name to fetch top tracks for."),
+    year: Optional[int] = typer.Option(None, "--year", help="Release year to search."),
+    limit: int = typer.Option(100, "--limit", help="Maximum new songs to insert (max 1000)."),
+    max_pages: int = typer.Option(20, "--max-pages", hidden=True, help="Maximum API pages to fetch."),
+    no_pipeline: bool = typer.Option(False, "--no-pipeline", help="Insert songs only; skip metadata/lyrics/embedding stages."),
+):
+    """
+    Expand the knowledge base with songs from external APIs.
+
+    At least one of --genre, --artist, or --year must be provided.
+
+    Examples:
+
+      music-teacher enrich --genre rock
+
+      music-teacher enrich --artist "Adele"
+
+      music-teacher enrich --year 1995
+
+      music-teacher enrich --genre jazz --limit 200
+    """
+    from music_teacher_ai.pipeline.enrichment import enrich_database
+
+    if not any([genre, artist, year]):
+        console.print("[red]Provide at least one of --genre, --artist, or --year.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        result = enrich_database(
+            genre=genre,
+            artist=artist,
+            year=year,
+            limit=limit,
+            max_pages=max_pages,
+            run_pipeline=not no_pipeline,
+        )
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
+
+    if result.new_songs_inserted == 0:
+        console.print("[yellow]No new songs were added.[/yellow]")
+
+
 @app.command("retry-failed")
 def retry_failed():
     """Retry previously failed ingestion steps."""

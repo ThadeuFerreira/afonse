@@ -204,16 +204,14 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                             ic(error)
 
                 # --- MusicBrainz + Last.fm fallback ---
-                if meta is None and not spotify_available:
+                # Runs when Spotify is disabled OR returned no result (meta is None).
+                # The guard on `meta is None` prevents a duplicate call when the
+                # spotify_available block above already tried MusicBrainz.
+                if meta is None:
                     meta = _try_musicbrainz(song.title, artist.name)
                     if meta:
                         meta = _enrich_with_lastfm(meta)
                         meta.metadata_source = "musicbrainz"
-
-                if meta is None and error is None:
-                    meta = _try_musicbrainz(song.title, artist.name)
-                    if meta:
-                        meta = _enrich_with_lastfm(meta)
 
                 if meta:
                     try:
@@ -229,6 +227,9 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                     error = error or "No result from any source"
                     ic(song.title, artist.name, error)
                     report.add_error(song_id=song.id, title=song.title, artist=artist.name, error=error)
+                    # Mark the song so it is not retried on every subsequent run.
+                    song.metadata_source = "failed"
+                    session.add(song)
                     session.add(
                         IngestionFailure(
                             song_id=song.id,

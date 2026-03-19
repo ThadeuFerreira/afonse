@@ -44,6 +44,13 @@ class SimilarTextRequest(BaseModel):
     min_score: float = 0.0
 
 
+class EnrichRequest(BaseModel):
+    genre: Optional[str] = None
+    artist: Optional[str] = None
+    year: Optional[int] = None
+    limit: int = 100
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -187,6 +194,43 @@ def similar_by_text(req: SimilarTextRequest):
         return find_similar_by_text(req.text, top_k=req.top_k, min_score=req.min_score)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# Enrichment
+# ---------------------------------------------------------------------------
+
+@app.post("/enrich")
+def enrich(req: EnrichRequest):
+    """
+    Expand the knowledge base with songs fetched by genre, artist, or year.
+
+    At least one of genre, artist, or year must be provided.
+    Runs the full pipeline (metadata → lyrics → vocab → embeddings) on new songs.
+    """
+    from music_teacher_ai.pipeline.enrichment import enrich_database
+
+    if not any([req.genre, req.artist, req.year]):
+        raise HTTPException(
+            status_code=422,
+            detail="Provide at least one of: genre, artist, year.",
+        )
+
+    try:
+        result = enrich_database(
+            genre=req.genre,
+            artist=req.artist,
+            year=req.year,
+            limit=req.limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    return {
+        "requested": req.limit,
+        "new_songs_inserted": result.new_songs_inserted,
+        "duplicates_skipped": result.duplicates_skipped,
+    }
 
 
 # ---------------------------------------------------------------------------

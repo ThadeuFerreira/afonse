@@ -155,6 +155,24 @@ TOOLS = [
         },
     },
     {
+        "name": "enrich_database",
+        "description": (
+            "Expand the song knowledge base by fetching candidates from external APIs. "
+            "Provide at least one of genre, artist, or year. "
+            "Runs metadata enrichment, lyrics download, vocabulary index, and embeddings "
+            "on newly inserted songs."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "genre": {"type": "string", "description": "Last.fm genre tag, e.g. 'jazz'"},
+                "artist": {"type": "string", "description": "Artist name to fetch top tracks for"},
+                "year": {"type": "integer", "description": "Release year to search"},
+                "limit": {"type": "integer", "description": "Max new songs to insert (default 100, max 1000)"},
+            },
+        },
+    },
+    {
         "name": "get_config",
         "description": (
             "Return the current credential configuration status. "
@@ -287,6 +305,29 @@ def dispatch(tool_name: str, inputs: dict[str, Any]) -> Any:
         try:
             return pm.export_format(inputs["playlist_id"], inputs.get("format", "m3u"))
         except (FileNotFoundError, ValueError) as exc:
+            return {"error": str(exc)}
+
+    if tool_name == "enrich_database":
+        from music_teacher_ai.pipeline.enrichment import enrich_database
+        genre = inputs.get("genre")
+        artist = inputs.get("artist")
+        year = inputs.get("year")
+        limit = inputs.get("limit", 100)
+        if not any([genre, artist, year]):
+            return {"error": "Provide at least one of: genre, artist, year."}
+        try:
+            result = enrich_database(
+                genre=genre,
+                artist=artist,
+                year=year,
+                limit=limit,
+            )
+            return {
+                "requested": limit,
+                "new_songs_inserted": result.new_songs_inserted,
+                "duplicates_skipped": result.duplicates_skipped,
+            }
+        except Exception as exc:
             return {"error": str(exc)}
 
     if tool_name == "get_config":
