@@ -68,15 +68,17 @@
                   "});",
                   "pm.test('Response has expected fields', function () {",
                   "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('database_file_size_bytes');",
                   "    pm.expect(data).to.have.property('songs');",
-                  "    pm.expect(data).to.have.property('lyrics');",
-                  "    pm.expect(data).to.have.property('embeddings');",
-                  "    pm.expect(data).to.have.property('vocabulary_entries');",
+                  "    pm.expect(data).to.have.property('songs_with_artists');",
                   "});",
                   "pm.test('Song count is a non-negative integer', function () {",
                   "    const data = pm.response.json();",
                   "    pm.expect(data.songs).to.be.a('number');",
                   "    pm.expect(data.songs).to.be.at.least(0);",
+                  "    pm.expect(data.songs_with_artists).to.be.a('number');",
+                  "    pm.expect(data.database_file_size_bytes).to.be.a('number');",
+                  "    pm.expect(data.database_file_size_bytes).to.be.at.least(0);",
                   "});"
                 ]
               }

@@ -8,7 +8,8 @@ session factory. No business logic lives here.
 | File | Purpose |
 |------|---------|
 | `models.py` | SQLModel table definitions — one class per DB table |
-| `sqlite.py` | Engine creation, `create_db()`, `get_session()`, and auto-migration |
+| `sqlite.py` | Engine creation, `create_db()`, `get_session()`, and explicit migration entrypoint |
+| `repositories.py` | Shared persistence helpers (`SongRepository`, `SongCandidateRepository`, `song_key`) |
 
 ## Schema
 
@@ -22,16 +23,17 @@ session factory. No business logic lives here.
 | `vocabularyindex` | `word`, `song_id` — one row per word per song |
 | `embedding` | `song_id` (PK), `embedding_vector` (bytes), `faiss_id` |
 | `ingestionfailure` | `song_id`, `stage`, `error_message`, `retry_count` |
+| `songcandidate` | `title`, `artist`, `query_origin`, `status`, `source_api` |
+| `backgroundjob` | `job_type`, `query_origin`, `status`, timestamps |
 
 ## Patterns
 
 - **`get_session()` is a context manager.** Always use `with get_session() as session:`.
   The session is committed or rolled back by the caller, never by the helper.
-- **Auto-migration on startup.** `sqlite.py` runs `_migrate()` at import time
-  when the DB file already exists. `_migrate()` iterates `SQLModel.metadata` and
-  issues `ALTER TABLE … ADD COLUMN` for any column present in the model but
-  absent in the live schema. New model fields are therefore picked up automatically
-  without a full rebuild.
+- **Explicit migration flow.** Use `migrate_db()` (or CLI `music-teacher migrate-db`)
+  to run schema/index migrations. This avoids hidden import-time side effects.
+- **Integrity indexes for idempotency.** Migration ensures unique/index constraints
+  for duplicate-prone paths (e.g. song identity and candidate identity).
 - **`metadata_source` sentinel.** `song.metadata_source = None` means the song
   has not been enriched yet. The enrichment pipeline queries `WHERE metadata_source IS NULL`
   to find work to do. Never set `metadata_source` to `None` after enrichment.

@@ -17,6 +17,7 @@ LASTFM_USER_AGENT = os.getenv("LASTFM_USER_AGENT", "MusicTeacherAI/0.1")
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "music.db")))
 FAISS_INDEX_PATH = Path(os.getenv("FAISS_INDEX_PATH", str(BASE_DIR / "data" / "embeddings.index")))
 PLAYLISTS_DIR = Path(os.getenv("PLAYLISTS_DIR", str(BASE_DIR / "data" / "playlists")))
+EXERCISES_DIR = Path(os.getenv("EXERCISES_DIR", str(BASE_DIR / "data" / "exercises")))
 API_CACHE_DIR = Path(os.getenv("API_CACHE_DIR", str(BASE_DIR / "data" / "api_cache")))
 REPORTS_DIR = Path(os.getenv("REPORTS_DIR", str(BASE_DIR / "data" / "reports")))
 

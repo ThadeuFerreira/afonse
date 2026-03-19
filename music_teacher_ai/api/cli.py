@@ -24,7 +24,9 @@ from music_teacher_ai.database.models import Song, Lyrics, Embedding, Chart, Ing
 
 app = typer.Typer(help="Music Teacher AI – manage and query the local knowledge base.")
 playlist_app = typer.Typer(help="Create and manage song playlists.")
+exercise_app = typer.Typer(help="Generate listening and fill-in-the-blank exercises.")
 app.add_typer(playlist_app, name="playlist")
+app.add_typer(exercise_app, name="exercise")
 console = Console()
 
 
@@ -358,15 +360,20 @@ def similar(
     console.print(table)
 
 
-@app.command()
-def exercise(
+# ---------------------------------------------------------------------------
+# Exercise sub-commands  (music-teacher exercise <sub-command>)
+# ---------------------------------------------------------------------------
+
+@exercise_app.command("show")
+def exercise_show(
     song_id: int = typer.Argument(..., help="Song database ID"),
     num_blanks: int = typer.Option(10, "--blanks", "-n", help="Number of blanks to create."),
     min_word_length: int = typer.Option(4, "--min-length", help="Minimum word length to blank."),
 ):
-    """Generate a fill-in-the-blank exercise from a song's lyrics."""
+    """Generate a numbered fill-in-the-blank exercise from a song's lyrics."""
     from music_teacher_ai.database.models import Artist, Lyrics, Song
     from music_teacher_ai.education_services.exercises.fill_in_blank import generate
+    from rich.panel import Panel
     from sqlmodel import select
 
     with get_session() as session:
@@ -382,7 +389,6 @@ def exercise(
     ex = generate(lyr.lyrics_text, song_title=title, artist=artist_name,
                   num_blanks=num_blanks, min_word_length=min_word_length)
 
-    from rich.panel import Panel
     console.print(Panel(
         f"[bold]{ex.song_title}[/bold] — {ex.artist}",
         title="Fill-in-the-Blank Exercise",
@@ -401,8 +407,8 @@ def exercise(
     console.print(table)
 
 
-@app.command()
-def lesson(
+@exercise_app.command("lesson")
+def exercise_lesson(
     song_id: int = typer.Argument(..., help="Song database ID"),
     num_blanks: int = typer.Option(10, "--blanks", "-n", help="Number of fill-in-blank gaps."),
     min_word_length: int = typer.Option(4, "--min-length", help="Minimum word length."),
@@ -432,6 +438,7 @@ def lesson(
         min_word_length=min_word_length,
     )
 
+    from rich.panel import Panel
     console.print(Panel(
         f"[bold]{les.song_title}[/bold] — {les.artist}",
         title="Music Lesson",
@@ -473,6 +480,136 @@ def lesson(
         console.print(", ".join(pv.unique_phrasal_verbs))
     else:
         console.print("[dim]None detected.[/dim]")
+
+
+@exercise_app.command("generate")
+def exercise_generate(
+    song: Optional[str] = typer.Option(None, "--song", help="Song title to search for."),
+    semantic: Optional[str] = typer.Option(None, "--semantic", help="Semantic query, e.g. 'songs about dreams'."),
+    playlist: Optional[str] = typer.Option(None, "--playlist", help="Playlist slug — generates one section per song."),
+    words: Optional[str] = typer.Option(None, "--words", help="Space-separated words to blank (manual mode), e.g. 'imagine world heaven'."),
+    random_mode: bool = typer.Option(False, "--random", help="Randomly blank words based on --level."),
+    level: int = typer.Option(20, "--level", help="Percentage of words to blank in random mode (10, 20, or 30)."),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output filename (default: exercise_YYYYMMDD_HHMM.txt)."),
+):
+    """
+    Generate a listening fill-the-gaps exercise and export it to a .txt file.
+
+    Examples:
+
+      music-teacher exercise generate --song "Imagine" --random --level 20
+
+      music-teacher exercise generate --song "Imagine" --words "imagine world heaven"
+
+      music-teacher exercise generate --playlist dream_playlist --level 30
+
+      music-teacher exercise generate --semantic "songs about dreams" --random
+    """
+    from music_teacher_ai.config.settings import EXERCISES_DIR
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.education_services.exercises.gap_fill import (
+        generate_manual,
+        generate_random,
+        render_text,
+    )
+    from sqlmodel import select
+
+    if not any([song, semantic, playlist]):
+        console.print("[red]Provide --song, --semantic, or --playlist.[/red]")
+        raise typer.Exit(1)
+    if not words and not random_mode:
+        console.print("[red]Provide --words for manual mode or --random for random selection.[/red]")
+        raise typer.Exit(1)
+
+    def _expand_and_exit(word: Optional[str] = None) -> None:
+        """Trigger background expansion using the same path as the search command."""
+        from music_teacher_ai.pipeline.jobs import get_job_runner
+        triggered = get_job_runner().trigger_expansion(word=word)
+        if triggered:
+            console.print(
+                "[dim]Triggering discovery job — run the same command again in a few minutes.[/dim]"
+            )
+        raise typer.Exit(1)
+
+    # ---- resolve lyrics entries ----
+    entries: list[tuple[str, str, str]] = []  # (lyrics_text, title, artist)
+
+    if playlist:
+        from music_teacher_ai.playlists.manager import get as get_playlist
+        try:
+            pl = get_playlist(playlist)
+        except FileNotFoundError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1)
+        with get_session() as session:
+            for ps in pl.songs:
+                lyr = session.exec(select(Lyrics).where(Lyrics.song_id == ps.song_id)).first()
+                if lyr:
+                    entries.append((lyr.lyrics_text, ps.title, ps.artist))
+        if not entries:
+            console.print("[yellow]No lyrics found for any song in the playlist.[/yellow]")
+            # Use first song title as expansion hint if available
+            hint = pl.songs[0].title if pl.songs else None
+            _expand_and_exit(word=hint)
+
+    elif semantic:
+        from music_teacher_ai.search.semantic_search import semantic_search
+        try:
+            results = semantic_search(semantic, top_k=5)
+        except FileNotFoundError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1)
+        if not results:
+            console.print("[yellow]No songs found for that query.[/yellow]")
+            _expand_and_exit(word=semantic)
+        with get_session() as session:
+            for r in results:   # walk all candidates until one has lyrics
+                lyr = session.exec(select(Lyrics).where(Lyrics.song_id == r["id"])).first()
+                if lyr:
+                    entries.append((lyr.lyrics_text, r["title"], r["artist"]))
+                    break
+        if not entries:
+            console.print("[yellow]No lyrics found for any of the top semantic results.[/yellow]")
+            _expand_and_exit(word=results[0]["title"] if results else None)
+
+    else:  # --song
+        from music_teacher_ai.database.models import Song as SongModel
+        from sqlmodel import select
+        with get_session() as session:
+            songs = session.exec(
+                select(SongModel).where(SongModel.title.ilike(f"%{song}%")).limit(1)
+            ).all()
+            if not songs:
+                console.print(f"[yellow]No song found matching '{song}'.[/yellow]")
+                _expand_and_exit(word=song)
+            s = songs[0]
+            lyr = session.exec(select(Lyrics).where(Lyrics.song_id == s.id)).first()
+            if not lyr:
+                console.print(f"[yellow]Lyrics not yet downloaded for '{s.title}'.[/yellow]")
+                _expand_and_exit(word=s.title)
+            artist_obj = session.get(Artist, s.artist_id)
+            entries.append((lyr.lyrics_text, s.title, artist_obj.name if artist_obj else ""))
+
+    # ---- build exercise text ----
+    word_list = words.split() if words else []
+    sections: list[str] = []
+
+    for lyrics_text, title, artist_name in entries:
+        if word_list:
+            ex = generate_manual(lyrics_text, word_list, song_title=title, artist=artist_name)
+        else:
+            ex = generate_random(lyrics_text, song_title=title, artist=artist_name, level=level)
+        sections.append(render_text(ex))
+
+    separator = "\n\n" + "=" * 60 + "\n\n"
+    full_text = separator.join(sections)
+
+    # ---- export ----
+    from music_teacher_ai.education_services.exercises.gap_fill import export_text
+    out_path = export_text(full_text, EXERCISES_DIR, output)
+
+    console.print(f"[green]Exercise saved to {out_path}[/green]")
+    console.print(f"[dim]{len(entries)} song(s) · {len(sections)} section(s)[/dim]")
 
 
 @app.command()

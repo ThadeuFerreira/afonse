@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query, Request, Response, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -106,14 +107,23 @@ def post_config(req: ConfigUpdateRequest):
 
 @app.get("/status")
 def status():
+    from music_teacher_ai.config.settings import DATABASE_PATH
     from sqlmodel import func
-    from music_teacher_ai.database.models import Embedding, Lyrics, VocabularyIndex
+    from music_teacher_ai.database.models import Artist, Embedding, Lyrics, VocabularyIndex
+
+    db_size_bytes = DATABASE_PATH.stat().st_size if DATABASE_PATH.exists() else 0
     with get_session() as session:
         return {
+            "database_file_size_bytes": db_size_bytes,
             "songs": session.exec(select(func.count()).select_from(Song)).one(),
             "lyrics": session.exec(select(func.count()).select_from(Lyrics)).one(),
             "embeddings": session.exec(select(func.count()).select_from(Embedding)).one(),
             "vocabulary_entries": session.exec(select(func.count()).select_from(VocabularyIndex)).one(),
+            "songs_with_artists": session.exec(
+                select(func.count())
+                .select_from(Song)
+                .join(Artist, Song.artist_id == Artist.id)
+            ).one(),
         }
 
 
@@ -388,6 +398,51 @@ def education_phrasal_verbs(song_id: int):
             for m in report.matches
         ],
     }
+
+
+class GapFillRequest(BaseModel):
+    song_id: int
+    mode: str = "random"            # "random" | "manual"
+    level: int = 20                 # percentage for random mode (1–100)
+    words: Optional[list[str]] = None  # word list for manual mode
+    output: Optional[str] = None    # filename override
+
+
+@app.post("/exercise/gap")
+def exercise_gap(req: GapFillRequest):
+    """
+    Generate a listening fill-the-gaps exercise and save it as a .txt file.
+
+    Returns the filename that was written to data/exercises/.
+    """
+    from music_teacher_ai.config.settings import EXERCISES_DIR
+    from music_teacher_ai.education_services.exercises.gap_fill import (
+        export,
+        generate_manual,
+        generate_random,
+    )
+
+    title, artist_name = _get_song_meta(req.song_id)
+    lyrics = _get_lyrics_text(req.song_id)
+
+    if req.mode == "manual":
+        if not req.words:
+            raise HTTPException(status_code=422, detail="words list required for manual mode")
+        ex = generate_manual(lyrics, req.words, song_title=title, artist=artist_name)
+    else:
+        ex = generate_random(lyrics, song_title=title, artist=artist_name, level=req.level)
+
+    # Sanitize the caller-supplied filename: keep only the basename and reject
+    # names that contain path separators or attempt directory traversal.
+    safe_filename: Optional[str] = None
+    if req.output is not None:
+        safe_filename = Path(req.output).name   # strips any leading directory parts
+        resolved = (EXERCISES_DIR / safe_filename).resolve()
+        if not str(resolved).startswith(str(EXERCISES_DIR.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid output filename")
+
+    out_path = export(ex, EXERCISES_DIR, safe_filename)
+    return {"file": out_path.name, "path": str(out_path)}
 
 
 class LessonRequest(BaseModel):

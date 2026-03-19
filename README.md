@@ -7,6 +7,7 @@ A local knowledge base of song lyrics and metadata to help English teachers find
 - Ingests Billboard Hot 100 charts (1960 → present) from Spotify and Genius
 - Stores lyrics, metadata, and vocabulary indexes locally in SQLite
 - Supports keyword search, semantic search, and natural language queries
+- Provides education-oriented outputs (fill-in-the-blank, vocabulary levels, phrasal verbs, lesson bundles)
 - Exposes a CLI, REST API, and MCP interface for AI agents
 
 ---
@@ -85,6 +86,7 @@ Estimated time: several hours for the full dataset. API rate limits apply.
 
 ```bash
 music-teacher status                    # Show database stats
+music-teacher migrate-db                # Apply explicit DB migrations/indexes
 music-teacher search --word dream       # Find songs containing "dream"
 music-teacher search --query "songs about freedom"  # Semantic search
 music-teacher search --word love --year-min 1970 --year-max 1980
@@ -125,9 +127,16 @@ Key endpoints:
 
 ```
 GET  /search?word=dream&year=1995
+     -> {"results":[...], "database_expansion_triggered":bool}
 POST /query   {"query": "songs about hope"}
 GET  /songs/{id}
 GET  /lyrics/{id}
+GET  /education/exercise/{id}
+GET  /education/vocabulary/{id}
+GET  /education/phrasal-verbs/{id}
+POST /education/lesson
+GET  /config
+POST /config
 ```
 
 Interactive docs: http://localhost:8000/docs
@@ -148,10 +157,12 @@ Communicates via stdin/stdout (newline-delimited JSON). See `AGENTS.md` for full
 
 ```
 music_teacher_ai/
+├── application/    # Shared use-cases used by CLI/REST/MCP adapters
 ├── config/         # Settings and environment loading
 ├── core/           # API clients (Spotify, Genius, Billboard)
 ├── database/       # SQLModel models and SQLite engine
-├── pipeline/       # Ingestion steps (charts, metadata, lyrics, embeddings)
+├── pipeline/       # Ingestion/expansion, fetchers, observers, reporting
+├── education_services/ # Exercise/vocabulary/phrasal-verb/lesson builders
 ├── search/         # Keyword and semantic search
 ├── api/            # CLI (Typer), REST API (FastAPI), MCP server
 └── ai/             # Natural language query parser

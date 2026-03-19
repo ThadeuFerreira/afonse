@@ -1,8 +1,8 @@
 # api/
 
-User-facing interfaces. Three parallel surfaces — CLI, REST API, and MCP — all
-backed by the same `search/` and `playlists/` layer. No business logic lives
-here; this package only translates input formats and renders output.
+User-facing interfaces. Three parallel surfaces — CLI, REST API, and MCP.
+Business orchestration is delegated to `music_teacher_ai/application/*` services;
+`api/` modules are adapters that parse inputs and map outputs/errors.
 
 ## Files
 
@@ -26,6 +26,7 @@ here; this package only translates input formats and renders output.
 | `doctor` | Health-check all components and credentials |
 | `retry-failed` | Reprocess `IngestionFailure` rows |
 | `rebuild-embeddings` | Rebuild the FAISS index from scratch |
+| `migrate-db` | Run explicit database migrations/index creation |
 
 ## Patterns
 
@@ -38,8 +39,13 @@ here; this package only translates input formats and renders output.
   functions (`from music_teacher_ai.pipeline.charts_ingestion import …`) to keep
   CLI startup fast and avoid import-time side-effects.
 - **MCP tool dispatch.** `mcp_server.py` reads newline-delimited JSON from stdin
-  and writes responses to stdout. Tool names match the `AGENTS.md` at the project
-  root. Add new tools by extending the `TOOLS` list and the dispatch dict.
-- **REST returns plain lists.** Search endpoints return `list[dict]` directly,
-  not wrapped in `{results: […]}`, so Postman tests and downstream clients can
-  index the array at `[0]` without unwrapping.
+  and writes responses to stdout. Dispatch is registry-based (`tool_name -> handler`)
+  to keep handlers cohesive and reduce if/elif growth.
+- **Application-service delegation.** Shared behaviors (search expansion policy,
+  playlist orchestration, enrichment validation, config updates) live in
+  `music_teacher_ai/application/*` and are reused across CLI/REST/MCP.
+- **Search response contract.** REST/MCP `search` returns:
+  `{ "results": [...], "database_expansion_triggered": bool }`.
+- **Education endpoints (REST).** `rest_api.py` exposes lesson-generation routes:
+  `/education/exercise/{song_id}`, `/education/vocabulary/{song_id}`,
+  `/education/phrasal-verbs/{song_id}`, and `/education/lesson`.

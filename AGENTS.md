@@ -9,6 +9,7 @@ This document describes the project for AI agents (e.g. OpenClaw) interacting wi
 Music Teacher AI is a **local knowledge base of song lyrics and metadata** designed to help English teachers find songs suitable for language learning.
 
 It ingests data from Spotify, Billboard, and Genius into a local SQLite database, then exposes that data through a CLI, REST API, and MCP interface.
+The API also includes education endpoints that transform lyrics into classroom-ready artifacts.
 
 ---
 
@@ -53,6 +54,10 @@ Response:
 #### search_songs
 
 Search by keyword, year, artist, or genre.
+Returns an object:
+
+- `results` – array of songs
+- `database_expansion_triggered` – boolean indicating whether background expansion was triggered
 
 Input fields (all optional):
 
@@ -155,12 +160,18 @@ Key endpoints:
 | POST | `/query` | Semantic search (`{"query": "..."}`) |
 | GET | `/similar/song/{id}` | Similar songs by ID |
 | POST | `/similar/text` | Similar songs by text fragment |
+| GET | `/education/exercise/{id}` | Fill-in-the-blank exercise |
+| GET | `/education/vocabulary/{id}` | Vocabulary (CEFR) analysis |
+| GET | `/education/phrasal-verbs/{id}` | Phrasal verb detection |
+| POST | `/education/lesson` | Composite lesson payload |
 | POST | `/playlists` | Create a playlist |
 | GET | `/playlists` | List all playlists |
 | GET | `/playlists/{id}` | Get a playlist |
 | DELETE | `/playlists/{id}` | Delete a playlist |
 | POST | `/playlists/{id}/refresh` | Re-run stored query |
 | GET | `/playlists/{id}/export?fmt=m3u` | Export playlist |
+| GET | `/config` | Credential status (masked) |
+| POST | `/config` | Update credentials (admin token required) |
 | GET | `/songs/{id}` | Song metadata |
 | GET | `/lyrics/{id}` | Song lyrics |
 | GET | `/songs` | List/filter songs |
@@ -179,6 +190,8 @@ Key endpoints:
 | `vocabularyindex` | word, song_id |
 | `embedding` | song_id, embedding_vector (float32 bytes) |
 | `ingestionfailure` | song_id, stage, error_message, retry_count |
+| `songcandidate` | title, artist, year, source_api, query_origin, status |
+| `backgroundjob` | job_type, query_origin, status, created_at, updated_at |
 
 ---
 
