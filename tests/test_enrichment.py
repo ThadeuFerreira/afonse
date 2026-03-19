@@ -310,10 +310,6 @@ def test_enrich_stops_on_global_dup_threshold(tmp_path, monkeypatch):
     """Loop stops after _GLOBAL_DUP_STOP consecutive all-dup pages."""
     enr = _make_db(tmp_path, monkeypatch)
 
-    # Prevent per-variant saturation from firing before the global threshold by
-    # raising _MIN_VARIANT_TRIES well above _GLOBAL_DUP_STOP.
-    monkeypatch.setattr(enr, "_MIN_VARIANT_TRIES", _GLOBAL_DUP_STOP * 10)
-
     # One song pre-populated
     from music_teacher_ai.database.models import Artist, Song
     from music_teacher_ai.database.sqlite import get_session
@@ -324,14 +320,18 @@ def test_enrich_stops_on_global_dup_threshold(tmp_path, monkeypatch):
         session.add(Song(title="Y", artist_id=a.id))
         session.commit()
 
-    # Two variants, both always return the same duplicate song
+    # Two variants, both always return the same duplicate song.
+    # min_variant_tries is set well above _GLOBAL_DUP_STOP so per-variant
+    # saturation cannot fire before the global consecutive-dup threshold.
     def dup_fetch(page):
         return [CandidateSong("Y", "X")]
 
     def fake_build(genre, artist, year, api_key, random_page_max):
         return [
-            Variant(name="v1", fetch_fn=dup_fetch, max_page=500),
-            Variant(name="v2", fetch_fn=dup_fetch, max_page=500),
+            Variant(name="v1", fetch_fn=dup_fetch, max_page=500,
+                    min_variant_tries=_GLOBAL_DUP_STOP * 10),
+            Variant(name="v2", fetch_fn=dup_fetch, max_page=500,
+                    min_variant_tries=_GLOBAL_DUP_STOP * 10),
         ]
 
     monkeypatch.setattr(enr, "_build_variants", fake_build)

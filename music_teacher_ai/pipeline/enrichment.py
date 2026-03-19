@@ -40,12 +40,9 @@ Stop conditions (first one wins)
   4. all variants exhausted / saturated
   5. _GLOBAL_DUP_STOP consecutive fully-duplicate pages
 """
-import random
-import re
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Optional
 
 from rich.console import Console
 from rich.progress import (
@@ -61,7 +58,9 @@ from sqlmodel import select
 from music_teacher_ai.database.models import Artist, Song
 from music_teacher_ai.database.repositories import SongRepository, normalize_text, song_key
 from music_teacher_ai.database.sqlite import get_session
+from music_teacher_ai.pipeline.fetchers import REQUEST_DELAY, build_variants as build_fetch_variants
 from music_teacher_ai.pipeline.reporter import PipelineReport
+from music_teacher_ai.pipeline.types import CandidateSong, EnrichmentResult, Variant
 
 console = Console()
 _song_repo = SongRepository()
@@ -78,73 +77,6 @@ _DUP_THRESHOLD = 0.9        # variant dup ratio above which it's considered satu
 _MIN_VARIANT_TRIES = 3      # minimum page tries before checking saturation
 _GLOBAL_DUP_STOP = 10       # consecutive all-dup pages across all variants → stop
 _MAX_LIMIT = 1000
-_REQUEST_DELAY = 0.3        # seconds between API calls
-
-_GEO_COUNTRIES = [
-    "United States", "United Kingdom", "Brazil", "Japan", "Germany",
-    "France", "Australia", "Canada", "Mexico", "Sweden",
-]
-
-
-# ---------------------------------------------------------------------------
-# Data types
-# ---------------------------------------------------------------------------
-
-@dataclass
-class CandidateSong:
-    title: str
-    artist: str
-    year: Optional[int] = None
-
-
-@dataclass
-class EnrichmentResult:
-    genre: Optional[str] = None
-    artist: Optional[str] = None
-    year: Optional[int] = None
-    requested_limit: int = 100
-    api_results_processed: int = 0
-    new_songs_inserted: int = 0
-    duplicates_skipped: int = 0
-    api_requests: int = 0
-    stop_reason: str = ""
-
-
-@dataclass
-class Variant:
-    """
-    One named query strategy.
-
-    Pages are picked randomly from [1, max_page].  The variant tracks its
-    own duplicate ratio so the engine can retire saturated strategies early.
-    """
-    name: str
-    fetch_fn: Callable[[int], list[CandidateSong]]
-    max_page: int = _DEFAULT_RANDOM_PAGE_MAX
-    tried_pages: set[int] = field(default_factory=set)
-    new_count: int = 0
-    skip_count: int = 0
-
-    def next_page(self) -> Optional[int]:
-        available = [p for p in range(1, self.max_page + 1) if p not in self.tried_pages]
-        return random.choice(available) if available else None
-
-    def record(self, page: int, new: int, skipped: int) -> None:
-        self.tried_pages.add(page)
-        self.new_count += new
-        self.skip_count += skipped
-
-    @property
-    def dup_ratio(self) -> float:
-        total = self.new_count + self.skip_count
-        return self.skip_count / total if total > 0 else 0.0
-
-    @property
-    def is_exhausted(self) -> bool:
-        return len(self.tried_pages) >= self.max_page
-
-    def is_saturated(self) -> bool:
-        return len(self.tried_pages) >= _MIN_VARIANT_TRIES and self.dup_ratio >= _DUP_THRESHOLD
 
 
 # ---------------------------------------------------------------------------
@@ -165,142 +97,6 @@ def _load_existing_keys() -> set[str]:
 
 
 # ---------------------------------------------------------------------------
-# Last.fm REST helpers  (pylast does not expose page= on tag/artist methods)
-# ---------------------------------------------------------------------------
-
-_LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/"
-
-
-def _lastfm_get(api_key: str, method: str, **params) -> dict:
-    import requests
-    resp = requests.get(
-        _LASTFM_API_URL,
-        params={"method": method, "api_key": api_key, "format": "json",
-                "limit": _PAGE_SIZE, **params},
-        timeout=15,
-    )
-    resp.raise_for_status()
-    return resp.json()
-
-
-# -- Discovery helpers (called once during variant-building) -----------------
-
-def _get_related_tags(tag: str, api_key: str, limit: int = 9) -> list[str]:
-    try:
-        data = _lastfm_get(api_key, "tag.getSimilar", tag=tag)
-        items = data.get("similartags", {}).get("tag", [])
-        return [t["name"] for t in items[:limit] if isinstance(t, dict) and t.get("name")]
-    except Exception:
-        return []
-
-
-def _get_tag_top_artists(tag: str, api_key: str, limit: int = 20) -> list[str]:
-    try:
-        data = _lastfm_get(api_key, "tag.getTopArtists", tag=tag, limit=limit)
-        items = data.get("topartists", {}).get("artist", [])
-        return [a["name"] for a in items if isinstance(a, dict) and a.get("name")]
-    except Exception:
-        return []
-
-
-def _get_similar_artists(artist: str, api_key: str, limit: int = 15) -> list[str]:
-    try:
-        data = _lastfm_get(api_key, "artist.getSimilar", artist=artist, limit=limit)
-        items = data.get("similarartists", {}).get("artist", [])
-        return [a["name"] for a in items[:limit] if isinstance(a, dict) and a.get("name")]
-    except Exception:
-        return []
-
-
-# -- Per-page fetch functions ------------------------------------------------
-
-def _fetch_tag_top_tracks(tag: str, page: int, api_key: str) -> list[CandidateSong]:
-    try:
-        data = _lastfm_get(api_key, "tag.getTopTracks", tag=tag, page=page)
-        tracks = data.get("tracks", {}).get("track", [])
-        return [
-            CandidateSong(title=t["name"], artist=t["artist"]["name"])
-            for t in tracks
-            if isinstance(t, dict) and t.get("name") and t.get("artist", {}).get("name")
-        ]
-    except Exception as exc:
-        console.log(f"[dim]tag.getTopTracks({tag!r}, p={page}): {exc}[/dim]")
-        return []
-
-
-def _fetch_artist_top_tracks(artist: str, page: int, api_key: str) -> list[CandidateSong]:
-    try:
-        data = _lastfm_get(api_key, "artist.getTopTracks", artist=artist, page=page)
-        tracks = data.get("toptracks", {}).get("track", [])
-        return [
-            CandidateSong(title=t["name"], artist=artist)
-            for t in tracks
-            if isinstance(t, dict) and t.get("name")
-        ]
-    except Exception as exc:
-        console.log(f"[dim]artist.getTopTracks({artist!r}, p={page}): {exc}[/dim]")
-        return []
-
-
-def _fetch_geo_top_tracks(country: str, page: int, api_key: str) -> list[CandidateSong]:
-    try:
-        data = _lastfm_get(api_key, "geo.getTopTracks", country=country, page=page)
-        tracks = data.get("tracks", {}).get("track", [])
-        return [
-            CandidateSong(title=t["name"], artist=t["artist"]["name"])
-            for t in tracks
-            if isinstance(t, dict) and t.get("name") and t.get("artist", {}).get("name")
-        ]
-    except Exception as exc:
-        console.log(f"[dim]geo.getTopTracks({country!r}, p={page}): {exc}[/dim]")
-        return []
-
-
-def _fetch_by_year_mb(year: int, page: int) -> list[CandidateSong]:
-    try:
-        import musicbrainzngs as mb
-        mb.set_useragent("MusicTeacherAI", "0.1")
-        result = mb.search_recordings(date=str(year), limit=_PAGE_SIZE,
-                                      offset=(page - 1) * _PAGE_SIZE)
-        candidates = []
-        for rec in result.get("recording-list", []):
-            title = rec.get("title", "").strip()
-            artist_name = next(
-                (c["artist"]["name"] for c in rec.get("artist-credit", [])
-                 if isinstance(c, dict) and "artist" in c),
-                "",
-            ).strip()
-            if title and artist_name:
-                candidates.append(CandidateSong(title=title, artist=artist_name, year=year))
-        return candidates
-    except Exception as exc:
-        console.log(f"[dim]MusicBrainz year={year} p={page}: {exc}[/dim]")
-        return []
-
-
-def _fetch_by_artist_mb(artist: str, page: int) -> list[CandidateSong]:
-    try:
-        import musicbrainzngs as mb
-        mb.set_useragent("MusicTeacherAI", "0.1")
-        result = mb.search_recordings(artistname=artist, limit=_PAGE_SIZE,
-                                      offset=(page - 1) * _PAGE_SIZE)
-        candidates = []
-        for rec in result.get("recording-list", []):
-            title = rec.get("title", "").strip()
-            artist_name = next(
-                (c["artist"]["name"] for c in rec.get("artist-credit", [])
-                 if isinstance(c, dict) and "artist" in c),
-                "",
-            ).strip()
-            if title and artist_name:
-                candidates.append(CandidateSong(title=title, artist=artist_name))
-        return candidates
-    except Exception as exc:
-        console.log(f"[dim]MusicBrainz artist={artist!r} p={page}: {exc}[/dim]")
-        return []
-
-
-# ---------------------------------------------------------------------------
 # Variant builders
 # ---------------------------------------------------------------------------
 
@@ -311,101 +107,17 @@ def _build_variants(
     api_key: str,
     random_page_max: int,
 ) -> list[Variant]:
-    """
-    Build the full pool of query strategies for the given criterion.
-
-    The list is shuffled before being returned so every enrichment run
-    explores strategies in a different order.
-    """
-    variants: list[Variant] = []
-
-    if genre:
-        # ------------------------------------------------------------------ #
-        # 1. Tag walk — seed tag + related tags                               #
-        # ------------------------------------------------------------------ #
-        seed_tags = [genre]
-        if api_key:
-            related = _get_related_tags(genre, api_key)
-            if related:
-                console.log(f"[dim]Related tags for {genre!r}: {related}[/dim]")
-            seed_tags.extend(related)
-
-        for tag in seed_tags:
-            variants.append(Variant(
-                name=f"tag:{tag}",
-                fetch_fn=lambda p, t=tag: _fetch_tag_top_tracks(t, p, api_key),
-                max_page=random_page_max,
-            ))
-
-        # ------------------------------------------------------------------ #
-        # 2. Artist walk — top genre artists → their individual track lists   #
-        # ------------------------------------------------------------------ #
-        if api_key:
-            top_artists = _get_tag_top_artists(genre, api_key)
-            random.shuffle(top_artists)
-            if top_artists:
-                console.log(f"[dim]{len(top_artists)} seed artists for tag {genre!r}[/dim]")
-            for art in top_artists[:15]:
-                variants.append(Variant(
-                    name=f"artist:{art}",
-                    fetch_fn=lambda p, a=art: _fetch_artist_top_tracks(a, p, api_key),
-                    max_page=min(random_page_max, 10),
-                ))
-
-        # ------------------------------------------------------------------ #
-        # 3. Country chart walk                                               #
-        # ------------------------------------------------------------------ #
-        if api_key:
-            countries = random.sample(_GEO_COUNTRIES, min(6, len(_GEO_COUNTRIES)))
-            for country in countries:
-                variants.append(Variant(
-                    name=f"geo:{country}",
-                    fetch_fn=lambda p, c=country: _fetch_geo_top_tracks(c, p, api_key),
-                    max_page=min(random_page_max, 10),
-                ))
-
-    elif artist:
-        # ------------------------------------------------------------------ #
-        # 4. Direct artist top tracks                                         #
-        # ------------------------------------------------------------------ #
-        if api_key:
-            variants.append(Variant(
-                name=f"artist:{artist}",
-                fetch_fn=lambda p: _fetch_artist_top_tracks(artist, p, api_key),
-                max_page=random_page_max,
-            ))
-
-            # Similar artists walk
-            similar = _get_similar_artists(artist, api_key)
-            random.shuffle(similar)
-            if similar:
-                console.log(f"[dim]{len(similar)} similar artists for {artist!r}[/dim]")
-            for sim in similar[:10]:
-                variants.append(Variant(
-                    name=f"similar:{sim}",
-                    fetch_fn=lambda p, a=sim: _fetch_artist_top_tracks(a, p, api_key),
-                    max_page=min(random_page_max, 5),
-                ))
-
-        # MusicBrainz fallback when Last.fm is not configured
-        if not api_key or not variants:
-            variants.append(Variant(
-                name=f"mb:artist:{artist}",
-                fetch_fn=lambda p: _fetch_by_artist_mb(artist, p),
-                max_page=random_page_max,
-            ))
-
-    elif year:
-        # ------------------------------------------------------------------ #
-        # 5. MusicBrainz year search                                          #
-        # ------------------------------------------------------------------ #
-        variants.append(Variant(
-            name=f"mb:year:{year}",
-            fetch_fn=lambda p: _fetch_by_year_mb(year, p),
-            max_page=random_page_max,
-        ))
-
-    random.shuffle(variants)
+    variants = build_fetch_variants(
+        genre=genre,
+        artist=artist,
+        year=year,
+        api_key=api_key,
+        random_page_max=random_page_max,
+    )
+    # Keep threshold semantics aligned with enrichment tunables for saturation.
+    for variant in variants:
+        variant.min_variant_tries = _MIN_VARIANT_TRIES
+        variant.dup_threshold = _DUP_THRESHOLD
     return variants
 
 
@@ -667,7 +379,7 @@ def enrich_database(
             elif not variant.is_exhausted:
                 active.append(variant)  # round-robin: put at end
 
-            time.sleep(_REQUEST_DELAY)
+            time.sleep(REQUEST_DELAY)
 
     # Determine stop reason
     if not result.stop_reason:
