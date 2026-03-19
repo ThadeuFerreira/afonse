@@ -44,25 +44,13 @@ import time
 from collections import deque
 from typing import Optional
 
-from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
-from sqlmodel import select
-
-from music_teacher_ai.database.models import Artist, Song
 from music_teacher_ai.database.repositories import SongRepository, normalize_text, song_key
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.fetchers import REQUEST_DELAY, build_variants as build_fetch_variants
+from music_teacher_ai.pipeline.observers import PipelineObserver, RichObserver
 from music_teacher_ai.pipeline.reporter import PipelineReport
 from music_teacher_ai.pipeline.types import CandidateSong, EnrichmentResult, Variant
 
-console = Console()
 _song_repo = SongRepository()
 
 # ---------------------------------------------------------------------------
@@ -202,19 +190,19 @@ def _build_report(
     return report, criteria
 
 
-def _run_post_pipeline() -> None:
+def _run_post_pipeline(observer: PipelineObserver) -> None:
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
     from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
     from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
 
-    console.print("[bold green]Step 1/4 – Enriching metadata...[/bold green]")
+    observer.info("[bold green]Step 1/4 – Enriching metadata...[/bold green]")
     enrich_metadata()
-    console.print("[bold green]Step 2/4 – Downloading lyrics...[/bold green]")
+    observer.info("[bold green]Step 2/4 – Downloading lyrics...[/bold green]")
     download_lyrics()
-    console.print("[bold green]Step 3/4 – Building vocabulary index...[/bold green]")
+    observer.info("[bold green]Step 3/4 – Building vocabulary index...[/bold green]")
     build_vocabulary_index()
-    console.print("[bold green]Step 4/4 – Generating embeddings...[/bold green]")
+    observer.info("[bold green]Step 4/4 – Generating embeddings...[/bold green]")
     generate_embeddings()
 
 
@@ -231,6 +219,7 @@ def enrich_database(
     max_runtime_seconds: int = _DEFAULT_MAX_RUNTIME,
     random_page_max: int = _DEFAULT_RANDOM_PAGE_MAX,
     run_pipeline: bool = True,
+    observer: Optional[PipelineObserver] = None,
     # Legacy alias kept for callers that pass max_pages=
     max_pages: Optional[int] = None,
 ) -> EnrichmentResult:
@@ -250,6 +239,8 @@ def enrich_database(
     """
     if max_pages is not None:
         max_requests = max_pages  # backward compat
+    if observer is None:
+        observer = RichObserver()
 
     if not any([genre, artist, year]):
         raise ValueError("Provide at least one of: genre, artist, year.")
@@ -270,45 +261,22 @@ def enrich_database(
         limit=limit,
         max_requests=max_requests,
     )
-    console.print(f"[cyan]Enriching database: {criteria}  limit={limit}[/cyan]")
+    observer.info(f"[cyan]Enriching database: {criteria}  limit={limit}[/cyan]")
 
     existing_keys = _load_existing_keys()
-    console.print(f"[dim]{len(existing_keys)} songs already in database[/dim]")
+    observer.info(f"[dim]{len(existing_keys)} songs already in database[/dim]")
 
     variants = _build_variants(genre, artist, year, api_key, random_page_max)
-    console.print(f"[dim]{len(variants)} query variants built[/dim]")
+    observer.info(f"[dim]{len(variants)} query variants built[/dim]")
     for v in variants:
-        console.log(f"[dim]  • {v.name}[/dim]")
+        observer.debug(f"[dim]  • {v.name}[/dim]")
 
     active: deque[Variant] = deque(variants)
     deadline = time.monotonic() + max_runtime_seconds
     api_requests = 0
     consecutive_global_dup = 0
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold cyan]{task.description}"),
-        BarColumn(bar_width=30),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        TextColumn(
-            "[green]✓{task.fields[new]}[/green]  "
-            "[dim]dup={task.fields[dup]}  "
-            "req={task.fields[req]}  "
-            "variants={task.fields[variants]}[/dim]"
-        ),
-        console=console,
-        transient=False,
-    ) as progress:
-        task = progress.add_task(
-            "Enriching",
-            total=limit,
-            new=0,
-            dup=0,
-            req=0,
-            variants=len(active),
-        )
-
+    with observer.progress(total=limit, variants=len(active)) as progress:
         while (
             result.new_songs_inserted < limit
             and api_requests < max_requests
@@ -346,7 +314,6 @@ def enrich_database(
                 consecutive_global_dup = 0
 
             progress.update(
-                task,
                 advance=inserted,
                 new=result.new_songs_inserted,
                 dup=result.duplicates_skipped,
@@ -358,7 +325,7 @@ def enrich_database(
             if consecutive_global_dup >= _GLOBAL_DUP_STOP:
                 result.stop_reason = "global_duplicate_threshold"
                 report.add_event("global_dup_stop", consecutive=consecutive_global_dup)
-                console.log(
+                observer.warn(
                     f"[yellow]{_GLOBAL_DUP_STOP} consecutive high-dup pages "
                     f"across all variants — stopping.[/yellow]"
                 )
@@ -372,7 +339,7 @@ def enrich_database(
                     dup_ratio=round(variant.dup_ratio, 2),
                     tries=len(variant.tried_pages),
                 )
-                console.log(
+                observer.debug(
                     f"[dim]Retired saturated variant: {variant.name} "
                     f"(dup={variant.dup_ratio:.0%})[/dim]"
                 )
@@ -399,8 +366,8 @@ def enrich_database(
     report.set("duplicates_skipped", result.duplicates_skipped)
     report.set("stop_reason", result.stop_reason)
 
-    console.print()
-    console.print(
+    observer.info("")
+    observer.info(
         f"[bold]Enrichment request[/bold]\n"
         f"  {criteria}\n\n"
         f"  API requests made  : {api_requests}\n"
@@ -411,11 +378,11 @@ def enrich_database(
     )
 
     if run_pipeline and result.new_songs_inserted > 0:
-        console.print()
-        console.print("[bold green]Running pipeline on new songs...[/bold green]")
-        _run_post_pipeline()
+        observer.info("")
+        observer.info("[bold green]Running pipeline on new songs...[/bold green]")
+        _run_post_pipeline(observer)
 
     report_path = report.save()
-    console.print(f"[dim]Report: {report_path}[/dim]")
+    observer.info(f"[dim]Report: {report_path}[/dim]")
 
     return result

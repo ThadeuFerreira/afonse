@@ -17,6 +17,7 @@ from music_teacher_ai.pipeline.enrichment import (
     _MIN_VARIANT_TRIES,
     _GLOBAL_DUP_STOP,
 )
+from music_teacher_ai.pipeline.observers import NullObserver
 
 
 # ---------------------------------------------------------------------------
@@ -427,6 +428,13 @@ def test_enrich_legacy_max_pages_param(tmp_path, monkeypatch):
     result = enr.enrich_database(genre="rock", limit=1000, max_pages=2, run_pipeline=False)
 
     assert result.api_requests <= 2
+
+
+def test_enrich_headless_observer(tmp_path, monkeypatch):
+    enr = _make_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(enr, "_build_variants", lambda *a, **k: [])
+    result = enr.enrich_database(genre="pop", limit=10, run_pipeline=False, observer=NullObserver())
+    assert result.requested_limit == 10
 
 
 # ---------------------------------------------------------------------------
