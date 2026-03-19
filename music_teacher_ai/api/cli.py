@@ -59,7 +59,7 @@ def init(
     ingest_charts(start=chart_start, end=end or date.today().year, workers=workers, limit=chart_limit)
 
     console.print("[bold green]Step 2/5 – Enriching metadata...[/bold green]")
-    enrich_metadata()
+    enrich_metadata(init_quick=quick)
 
     console.print("[bold green]Step 3/5 – Downloading lyrics...[/bold green]")
     download_lyrics()

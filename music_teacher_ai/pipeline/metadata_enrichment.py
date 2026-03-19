@@ -130,12 +130,19 @@ def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) ->
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def enrich_metadata(batch_size: int = 50) -> None:
+def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
     """Enrich songs that have not yet been processed by any metadata source."""
     with get_session() as session:
-        songs = session.exec(
-            select(Song).where(Song.metadata_source == None)  # noqa: E711
-        ).all()
+        if init_quick:
+            songs = session.exec(
+                select(Song).where(Song.metadata_source == None)  # noqa: E711
+                .where(Song.release_year >= 2000)
+                .limit(10)
+            ).all()
+        else:
+            songs = session.exec(
+                select(Song).where(Song.metadata_source == None)  # noqa: E711
+            ).all()
 
     total = len(songs)
     console.print(f"[cyan]Enriching metadata for {total} songs[/cyan]")

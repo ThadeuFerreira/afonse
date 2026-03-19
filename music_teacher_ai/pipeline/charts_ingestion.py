@@ -112,12 +112,12 @@ def ingest_charts(
     total_songs = 0
     total_chart_entries = 0
 
-    for year in sorted(results):
-        entries = results[year]
-        if isinstance(entries, Exception):
-            continue  # already reported above
+    with get_session() as session:
+        for year in sorted(results):
+            entries = results[year]
+            if isinstance(entries, Exception):
+                continue  # already reported above
 
-        with get_session() as session:
             for entry in entries:
                 try:
                     artist = _get_or_create_artist(session, entry.artist)
@@ -145,7 +145,8 @@ def ingest_charts(
                         raw_title=entry.title,
                         raw_artist=entry.artist,
                     ))
-            session.commit()
+
+        session.commit()
 
     console.print(
         f"[green]Charts ingestion complete.[/green] "
