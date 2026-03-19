@@ -33,10 +33,23 @@ def search_track(title: str, artist: str) -> Optional[TrackMetadata]:
         return None
 
     rec = recordings[0]
-    return _parse_recording(rec)
+    isrc = _fetch_isrc(rec.get("id"))
+    return _parse_recording(rec, isrc=isrc)
 
 
-def _parse_recording(rec: dict) -> TrackMetadata:
+def _fetch_isrc(mbid: Optional[str]) -> Optional[str]:
+    """Look up the first ISRC for a recording by its MusicBrainz ID."""
+    if not mbid:
+        return None
+    try:
+        data = musicbrainzngs.get_recording_by_id(mbid, includes=["isrcs"])
+        isrc_list = data.get("recording", {}).get("isrc-list", [])
+        return isrc_list[0] if isrc_list else None
+    except Exception:
+        return None
+
+
+def _parse_recording(rec: dict, isrc: Optional[str] = None) -> TrackMetadata:
     title = rec.get("title", "")
     artist = ""
     artist_credits = rec.get("artist-credit", [])
@@ -74,5 +87,6 @@ def _parse_recording(rec: dict) -> TrackMetadata:
         album=album,
         release_year=release_year,
         duration_ms=duration_ms,
+        isrc=isrc,
         metadata_source="musicbrainz",
     )

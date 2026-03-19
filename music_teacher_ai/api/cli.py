@@ -19,6 +19,8 @@ console = Console()
 def init(
     start: int = typer.Option(1960, help="First year to ingest from Billboard."),
     end: int = typer.Option(None, help="Last year to ingest (default: current year)."),
+    workers: int = typer.Option(5, "--workers", "-w", help="Parallel workers for Billboard fetch. Raise carefully — aggressive values may trigger rate-limiting."),
+    quick: bool = typer.Option(False, "--quick", help="Quick start: top 10 songs/year since 2000 only (~25 years × 10 songs)."),
 ):
     """Initialize the knowledge base from scratch."""
     from music_teacher_ai.pipeline.charts_ingestion import ingest_charts
@@ -27,13 +29,36 @@ def init(
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
 
+    chart_limit = 10 if quick else None
+    # Validate start and end years before computing the effective range.
+    if start is None or not isinstance(start, int):
+        start = date.today().year - 1
+    if end is None or not isinstance(end, int):
+        end = date.today().year - 1
+    if start > end:
+        start = date.today().year - 2
+        end = date.today().year - 1
+    if start < 1960:
+        start = 1960
+    if end < 1961:
+        end = 1961
+
+    # Apply quick-mode override after validation so the sanitized end is kept.
+    chart_start = 2000 if quick else start
+
+    if quick:
+        console.print(
+            "[bold yellow]Quick mode:[/bold yellow] fetching top 10 songs/year from 2000 to present. "
+            "Run without --quick for full history."
+        )
+
     console.print("[bold green]Creating database schema...[/bold green]")
     create_db()
 
     console.print("[bold green]Step 1/5 – Fetching Billboard charts...[/bold green]")
-    ingest_charts(start=start, end=end or date.today().year)
+    ingest_charts(start=chart_start, end=end or date.today().year, workers=workers, limit=chart_limit)
 
-    console.print("[bold green]Step 2/5 – Enriching metadata via Spotify...[/bold green]")
+    console.print("[bold green]Step 2/5 – Enriching metadata...[/bold green]")
     enrich_metadata()
 
     console.print("[bold green]Step 3/5 – Downloading lyrics...[/bold green]")

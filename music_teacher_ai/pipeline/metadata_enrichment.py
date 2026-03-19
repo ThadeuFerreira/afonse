@@ -8,10 +8,25 @@ Source priority:
 
 Spotify is disabled for the rest of the batch the moment it raises
 SpotifyPremiumRequiredError, avoiding 6500 failed requests.
+
+Debug logging:
+  Set DEBUG=1 (or any truthy value) to enable icecream trace output showing
+  which API source was used, ISRC values found, and per-song decisions.
 """
 import json
+import os
 
+from icecream import ic
 from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from sqlmodel import select
 
 from music_teacher_ai.core.spotify_client import TrackMetadata
@@ -20,6 +35,10 @@ from music_teacher_ai.database.sqlite import get_session
 
 console = Console()
 
+# Disable icecream unless DEBUG is set in the environment.
+if not os.getenv("DEBUG"):
+    ic.disable()
+
 
 # ---------------------------------------------------------------------------
 # Source helpers
@@ -27,14 +46,21 @@ console = Console()
 
 def _try_spotify(title: str, artist: str) -> TrackMetadata | None:
     from music_teacher_ai.core.spotify_client import search_track
-    return search_track(title, artist)
+    ic(title, artist)
+    result = search_track(title, artist)
+    ic(result)
+    return result
 
 
 def _try_musicbrainz(title: str, artist: str) -> TrackMetadata | None:
     from music_teacher_ai.core.musicbrainz_client import search_track
     try:
-        return search_track(title, artist)
-    except Exception:
+        ic(title, artist)
+        result = search_track(title, artist)
+        ic(result)
+        return result
+    except Exception as exc:
+        ic(exc)
         return None
 
 
@@ -44,12 +70,14 @@ def _enrich_with_lastfm(meta: TrackMetadata) -> TrackMetadata:
     if not lastfm_client.is_configured():
         return meta
     if not meta.genres:
-        meta.genres = lastfm_client.get_tags(meta.title, meta.artist)
+        tags = lastfm_client.get_tags(meta.title, meta.artist)
+        ic(tags)
+        meta.genres = tags
     if meta.popularity is None:
         play_count = lastfm_client.get_play_count(meta.title, meta.artist)
         if play_count is not None:
-            # Normalize to 0–100 scale (cap at 10M plays)
             meta.popularity = min(100, int(play_count / 100_000))
+            ic(play_count, meta.popularity)
     return meta
 
 
@@ -58,6 +86,7 @@ def _enrich_with_lastfm(meta: TrackMetadata) -> TrackMetadata:
 # ---------------------------------------------------------------------------
 
 def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) -> None:
+    ic(meta.metadata_source, meta.isrc)
     artist.genres = json.dumps(meta.genres)
     if meta.artist_spotify_id:
         artist.spotify_id = meta.artist_spotify_id
@@ -81,6 +110,8 @@ def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) ->
 
     if meta.spotify_id:
         song.spotify_id = meta.spotify_id
+    if meta.isrc:
+        song.isrc = meta.isrc
     if meta.release_year:
         song.release_year = meta.release_year
     song.popularity = meta.popularity
@@ -106,74 +137,105 @@ def enrich_metadata(batch_size: int = 50) -> None:
             select(Song).where(Song.metadata_source == None)  # noqa: E711
         ).all()
 
-    console.print(f"[cyan]Enriching metadata for {len(songs)} songs[/cyan]")
+    total = len(songs)
+    console.print(f"[cyan]Enriching metadata for {total} songs[/cyan]")
+
+    if not total:
+        return
 
     spotify_available = True   # disabled on first SpotifyPremiumRequiredError
     enriched = 0
     failed = 0
 
-    for song in songs:
-        with get_session() as session:
-            artist = session.get(Artist, song.artist_id)
-            if not artist:
-                continue
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=30),
+        MofNCompleteColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        TextColumn("[green]✓{task.fields[enriched]}[/green] [red]✗{task.fields[failed]}[/red]"),
+        console=console,
+        transient=False,
+    ) as progress:
+        task = progress.add_task(
+            "Enriching metadata",
+            total=total,
+            enriched=0,
+            failed=0,
+        )
 
-            meta: TrackMetadata | None = None
-            error: str | None = None
+        for song in songs:
+            with get_session() as session:
+                artist = session.get(Artist, song.artist_id)
+                if not artist:
+                    progress.advance(task)
+                    continue
 
-            # --- Spotify ---
-            if spotify_available:
-                try:
-                    meta = _try_spotify(song.title, artist.name)
-                except Exception as exc:
-                    from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError
-                    if isinstance(exc, SpotifyPremiumRequiredError):
-                        console.print(
-                            f"[yellow]Spotify unavailable (Premium required). "
-                            f"Falling back to MusicBrainz + Last.fm for all remaining songs.[/yellow]"
+                meta: TrackMetadata | None = None
+                error: str | None = None
+
+                # --- Spotify ---
+                if spotify_available:
+                    try:
+                        meta = _try_spotify(song.title, artist.name)
+                    except Exception as exc:
+                        from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError
+                        if isinstance(exc, SpotifyPremiumRequiredError):
+                            console.log(
+                                "[yellow]Spotify unavailable (Premium required). "
+                                "Falling back to MusicBrainz + Last.fm for all remaining songs.[/yellow]"
+                            )
+                            spotify_available = False
+                        else:
+                            error = f"Spotify: {exc}"
+                            ic(error)
+
+                # --- MusicBrainz + Last.fm fallback ---
+                if meta is None and not spotify_available:
+                    meta = _try_musicbrainz(song.title, artist.name)
+                    if meta:
+                        meta = _enrich_with_lastfm(meta)
+                        meta.metadata_source = "musicbrainz"
+
+                if meta is None and error is None:
+                    meta = _try_musicbrainz(song.title, artist.name)
+                    if meta:
+                        meta = _enrich_with_lastfm(meta)
+
+                if meta:
+                    try:
+                        _apply_metadata(session, song, artist, meta)
+                        session.commit()
+                        enriched += 1
+                    except Exception as exc:
+                        session.rollback()
+                        error = f"DB write: {exc}"
+                        ic(error)
+
+                if meta is None:
+                    error = error or "No result from any source"
+                    ic(song.title, artist.name, error)
+                    session.add(
+                        IngestionFailure(
+                            song_id=song.id,
+                            stage="metadata",
+                            error_message=error,
                         )
-                        spotify_available = False
-                    else:
-                        error = f"Spotify: {exc}"
-
-            # --- MusicBrainz + Last.fm fallback ---
-            if meta is None and not spotify_available:
-                meta = _try_musicbrainz(song.title, artist.name)
-                if meta:
-                    meta = _enrich_with_lastfm(meta)
-                    meta.metadata_source = "musicbrainz"
-
-            if meta is None and error is None:
-                # Spotify returned no result and no exception; try MusicBrainz anyway
-                meta = _try_musicbrainz(song.title, artist.name)
-                if meta:
-                    meta = _enrich_with_lastfm(meta)
-
-            if meta:
-                try:
-                    _apply_metadata(session, song, artist, meta)
-                    session.commit()
-                    enriched += 1
-                except Exception as exc:
-                    session.rollback()
-                    error = f"DB write: {exc}"
-
-            if meta is None:
-                error = error or "No result from any source"
-                session.add(
-                    IngestionFailure(
-                        song_id=song.id,
-                        stage="metadata",
-                        error_message=error,
                     )
-                )
-                session.commit()
-                failed += 1
+                    session.commit()
+                    failed += 1
 
-        if (enriched + failed) % batch_size == 0:
-            source = "Spotify" if spotify_available else "MusicBrainz/Last.fm"
-            console.print(f"  [{source}] enriched={enriched} failed={failed}")
+            progress.update(task, advance=1, enriched=enriched, failed=failed)
+
+            if (enriched + failed) % batch_size == 0:
+                source = "Spotify" if spotify_available else "MusicBrainz/Last.fm"
+                console.log(
+                    f"  [{source}] enriched=[green]{enriched}[/green] "
+                    f"failed=[red]{failed}[/red]"
+                )
 
     console.print(
-        f"[green]Metadata enrichment complete.[/green] enriched={enriched} failed={failed}"
+        f"[green]Metadata enrichment complete.[/green] "
+        f"enriched={enriched} failed={failed} total={total}"
     )

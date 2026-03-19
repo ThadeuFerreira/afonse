@@ -36,6 +36,7 @@ class TrackMetadata:
     valence: Optional[float] = None
     energy: Optional[float] = None
     danceability: Optional[float] = None
+    isrc: Optional[str] = None
     metadata_source: str = "spotify"
 
 
@@ -106,6 +107,7 @@ def _parse_track(sp: spotipy.Spotify, item: dict) -> TrackMetadata:
         popularity=item.get("popularity"),
         duration_ms=item.get("duration_ms"),
         genres=genres,
+        isrc=item.get("external_ids", {}).get("isrc"),
         tempo=audio_features.get("tempo"),
         valence=audio_features.get("valence"),
         energy=audio_features.get("energy"),

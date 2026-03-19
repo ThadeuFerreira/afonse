@@ -27,7 +27,11 @@ def _cache_path(key: str) -> Path:
     return API_CACHE_DIR / key[:2] / f"{key}.json"
 
 
-def cached_api(namespace: str, from_cache: Optional[Callable[[Any], Any]] = None) -> Callable:
+def cached_api(
+    namespace: str,
+    from_cache: Optional[Callable[[Any], Any]] = None,
+    serialize: Optional[Callable[[Any], Any]] = None,
+) -> Callable:
     """
     Decorator that persists successful API responses to disk as JSON.
 
@@ -36,7 +40,13 @@ def cached_api(namespace: str, from_cache: Optional[Callable[[Any], Any]] = None
         from_cache: Callable that reconstructs the Python object from the
             stored JSON value.  Leave ``None`` for primitives and collections
             (``str``, ``int``, ``list[str]``, …) which round-trip through JSON
-            unchanged.  For dataclasses pass ``lambda d: MyClass(**d)``.
+            unchanged.  For a single dataclass pass ``lambda d: MyClass(**d)``;
+            for a list of dataclasses pass
+            ``lambda data: [MyClass(**d) for d in data]``.
+        serialize: Callable that converts the return value to a JSON-compatible
+            object before writing.  Required when returning a list of dataclasses
+            (e.g. ``lambda r: [dataclasses.asdict(e) for e in r]``).
+            Single dataclasses are handled automatically without this argument.
     """
     def decorator(fn: Callable) -> Callable:
         @wraps(fn)
@@ -54,8 +64,9 @@ def cached_api(namespace: str, from_cache: Optional[Callable[[Any], Any]] = None
 
             result = fn(*args, **kwargs)
 
-            # Serialize: dataclasses → dict, everything else as-is.
-            if result is not None and dataclasses.is_dataclass(result):
+            if serialize is not None:
+                stored = serialize(result)
+            elif result is not None and dataclasses.is_dataclass(result):
                 stored = dataclasses.asdict(result)
             else:
                 stored = result
