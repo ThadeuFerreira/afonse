@@ -634,5 +634,93 @@ def playlist_refresh(
     console.print(f"[green]Refreshed '{playlist_id}' — {len(playlist.songs)} songs.[/green]")
 
 
+@app.command()
+def config(
+    show: bool = typer.Option(False, "--show", help="Print current credential status and exit."),
+):
+    """
+    Set or update API credentials stored in .env.
+
+    Each prompt shows the current value (masked for secrets). Press Enter to
+    keep the existing value. The ADMIN_TOKEN used to protect the REST and MCP
+    config endpoints is displayed once — it is also readable from .env at any time.
+    """
+    from rich.panel import Panel
+    from rich.table import Table as RichTable
+    from music_teacher_ai.config.credentials import (
+        FIELDS,
+        current_status,
+        get_admin_token,
+        update_env,
+        read_env,
+        mask,
+        FIELD_MAP,
+    )
+
+    if show:
+        table = RichTable(title="Credential Status", show_lines=True)
+        table.add_column("Key", style="cyan")
+        table.add_column("Label")
+        table.add_column("Required", width=8)
+        table.add_column("Set", width=5)
+        table.add_column("Value")
+        for row in current_status():
+            req = "[yellow]yes[/yellow]" if row["required"] else "no"
+            set_icon = "[green]✓[/green]" if row["set"] else "[red]✗[/red]"
+            table.add_row(row["key"], row["label"], req, set_icon, row["masked_value"])
+        console.print(table)
+        return
+
+    # Ensure admin token exists before prompting anything else
+    token = get_admin_token()
+
+    env = read_env()
+    updates: dict[str, str] = {}
+
+    console.print()
+    console.print("[bold]Configure API credentials[/bold]  (press Enter to keep current value)")
+    console.print()
+
+    for field in FIELDS:
+        current = env.get(field.key, "")
+        current_display = mask(current) if field.secret else (current or "(not set)")
+        label = f"{field.label}"
+        if field.required:
+            label += " [yellow]*required[/yellow]"
+        if field.help:
+            label += f"\n  [dim]{field.help}[/dim]"
+
+        prompt_text = f"{label}\n  current: {current_display}\n  new value"
+        new_value = typer.prompt(
+            prompt_text,
+            default="",
+            hide_input=field.secret,
+            show_default=False,
+        ).strip()
+
+        if new_value:
+            updates[field.key] = new_value
+        console.print()
+
+    if updates:
+        update_env(updates)
+        console.print(f"[green]Saved {len(updates)} credential(s) to .env[/green]")
+    else:
+        console.print("[dim]No changes made.[/dim]")
+
+    # Display admin token (first generation or reminder)
+    console.print()
+    console.print(Panel(
+        f"[bold]REST / MCP admin token[/bold]\n\n"
+        f"  [cyan]{token}[/cyan]\n\n"
+        f"  Use as [bold]Authorization: Bearer <token>[/bold] header for [bold]POST /config[/bold].\n"
+        f"  For MCP, pass as [bold]admin_token[/bold] in the tool inputs.\n"
+        f"  The token is also stored in [dim].env[/dim] as [bold]ADMIN_TOKEN[/bold].",
+        title="Admin Token",
+        border_style="yellow",
+        expand=False,
+    ))
+
+
 def main():
     app()

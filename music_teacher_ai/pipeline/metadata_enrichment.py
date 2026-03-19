@@ -32,6 +32,7 @@ from sqlmodel import select
 from music_teacher_ai.core.spotify_client import TrackMetadata
 from music_teacher_ai.database.models import Artist, Song, Album, IngestionFailure
 from music_teacher_ai.database.sqlite import get_session
+from music_teacher_ai.pipeline.reporter import PipelineReport
 
 console = Console()
 
@@ -132,6 +133,7 @@ def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) ->
 
 def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
     """Enrich songs that have not yet been processed by any metadata source."""
+    report = PipelineReport("metadata")
     with get_session() as session:
         if init_quick:
             songs = session.exec(
@@ -145,9 +147,11 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
             ).all()
 
     total = len(songs)
+    report.set("total", total)
     console.print(f"[cyan]Enriching metadata for {total} songs[/cyan]")
 
     if not total:
+        report.save()
         return
 
     spotify_available = True   # disabled on first SpotifyPremiumRequiredError
@@ -193,6 +197,7 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                                 "[yellow]Spotify unavailable (Premium required). "
                                 "Falling back to MusicBrainz + Last.fm for all remaining songs.[/yellow]"
                             )
+                            report.add_event("spotify_disabled", reason="SpotifyPremiumRequiredError")
                             spotify_available = False
                         else:
                             error = f"Spotify: {exc}"
@@ -223,6 +228,7 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                 if meta is None:
                     error = error or "No result from any source"
                     ic(song.title, artist.name, error)
+                    report.add_error(song_id=song.id, title=song.title, artist=artist.name, error=error)
                     session.add(
                         IngestionFailure(
                             song_id=song.id,
@@ -242,7 +248,14 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                     f"failed=[red]{failed}[/red]"
                 )
 
+    source = "spotify" if spotify_available else "musicbrainz"
+    report.set("enriched", enriched)
+    report.set("failed", failed)
+    report.set("final_source", source)
+    report_path = report.save()
+
     console.print(
         f"[green]Metadata enrichment complete.[/green] "
         f"enriched={enriched} failed={failed} total={total}"
     )
+    console.print(f"[dim]Report: {report_path}[/dim]")

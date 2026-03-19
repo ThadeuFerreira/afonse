@@ -7,6 +7,7 @@ from sqlmodel import select
 from music_teacher_ai.database.models import Lyrics, Embedding
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.config.settings import FAISS_INDEX_PATH, EMBEDDING_MODEL, EMBEDDING_DIM
+from music_teacher_ai.pipeline.reporter import PipelineReport
 
 console = Console()
 
@@ -23,6 +24,7 @@ def _load_or_create_index() -> faiss.IndexFlatIP:
 
 
 def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
+    report = PipelineReport("embeddings")
     with get_session() as session:
         if rebuild:
             from sqlmodel import delete
@@ -42,9 +44,14 @@ def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
 
     if not pending:
         console.print("[yellow]No new lyrics to embed.[/yellow]")
+        report.set("total", 0)
+        report.save()
         return
 
     console.print(f"[cyan]Generating embeddings for {len(pending)} songs[/cyan]")
+    report.set("total", len(pending))
+    report.set("model", EMBEDDING_MODEL)
+    report.set("batch_size", batch_size)
     model = _load_model()
     FAISS_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
     index = _load_or_create_index()
@@ -71,4 +78,11 @@ def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
         console.print(f"  embedded {min(i + batch_size, len(pending))}/{len(pending)}")
 
     faiss.write_index(index, str(FAISS_INDEX_PATH))
+
+    report.set("embedded", len(pending))
+    report.set("faiss_index_size", index.ntotal)
+    report.set("faiss_path", str(FAISS_INDEX_PATH))
+    report_path = report.save()
+
     console.print(f"[green]Embeddings complete.[/green] FAISS index saved to {FAISS_INDEX_PATH}")
+    console.print(f"[dim]Report: {report_path}[/dim]")

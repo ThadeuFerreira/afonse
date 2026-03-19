@@ -1,25 +1,26 @@
 import re
+import threading
 from typing import Optional
 import lyricsgenius
 
 from music_teacher_ai.config.settings import GENIUS_ACCESS_TOKEN
 from music_teacher_ai.core.api_cache import cached_api
 
-
-_genius: lyricsgenius.Genius | None = None
+# Thread-local storage so each worker thread gets its own Genius session.
+# lyricsgenius uses requests.Session internally which is not thread-safe.
+_thread_local = threading.local()
 
 
 def get_genius() -> lyricsgenius.Genius:
-    global _genius
-    if _genius is None:
-        _genius = lyricsgenius.Genius(
+    if not hasattr(_thread_local, "genius"):
+        _thread_local.genius = lyricsgenius.Genius(
             GENIUS_ACCESS_TOKEN,
             skip_non_songs=True,
             excluded_terms=["(Remix)", "(Live)"],
             remove_section_headers=True,
             verbose=False,
         )
-    return _genius
+    return _thread_local.genius
 
 
 @cached_api("genius")

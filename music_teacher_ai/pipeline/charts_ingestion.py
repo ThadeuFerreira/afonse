@@ -15,6 +15,7 @@ from music_teacher_ai.core.billboard_client import fetch_all_years_parallel, Cha
 from music_teacher_ai.database.models import Artist, Song, Chart, IngestionFailure
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.config.settings import BILLBOARD_START_YEAR
+from music_teacher_ai.pipeline.reporter import PipelineReport
 
 console = Console()
 
@@ -59,9 +60,17 @@ def ingest_charts(
     workers: int = 5,
     limit: int | None = None,
 ) -> None:
+    report = PipelineReport("charts")
     end = end or date.today().year
     total_years = end - start + 1
     limit_label = f" (top {limit} per year)" if limit else ""
+
+    report.set("years_requested", total_years)
+    report.set("start_year", start)
+    report.set("end_year", end)
+    report.set("workers", workers)
+    if limit:
+        report.set("songs_per_year_limit", limit)
 
     console.print(
         f"[cyan]Fetching {total_years} Billboard charts in parallel "
@@ -83,8 +92,10 @@ def ingest_charts(
             if isinstance(result, Exception):
                 if _is_block(result):
                     console.log(f"[bold red]  {year}  BLOCKED – {result}[/bold red]")
+                    report.add_event("blocked", year=year, error=str(result))
                 else:
                     console.log(f"[red]  {year}  ERROR   – {result}[/red]")
+                    report.add_error(year=year, error=str(result))
             else:
                 console.log(f"[green]  {year}  OK      – {len(result)} entries[/green]")
             progress.advance(fetch_task)
@@ -148,9 +159,17 @@ def ingest_charts(
 
         session.commit()
 
+    report.set("songs_processed", total_songs)
+    report.set("chart_entries_added", total_chart_entries)
+    report.set("years_ok", total_years - len(fetch_errors))
+    report.set("years_blocked", len(blocks))
+    report.set("years_errored", len(plain_errors))
+    report_path = report.save()
+
     console.print(
         f"[green]Charts ingestion complete.[/green] "
         f"Songs: {total_songs}, Chart entries: {total_chart_entries}, "
         f"Failed years: {len(fetch_errors)} "
         f"({len(blocks)} blocked, {len(plain_errors)} errors)"
     )
+    console.print(f"[dim]Report: {report_path}[/dim]")

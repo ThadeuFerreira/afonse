@@ -18,6 +18,7 @@ DATABASE_PATH = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "music.d
 FAISS_INDEX_PATH = Path(os.getenv("FAISS_INDEX_PATH", str(BASE_DIR / "data" / "embeddings.index")))
 PLAYLISTS_DIR = Path(os.getenv("PLAYLISTS_DIR", str(BASE_DIR / "data" / "playlists")))
 API_CACHE_DIR = Path(os.getenv("API_CACHE_DIR", str(BASE_DIR / "data" / "api_cache")))
+REPORTS_DIR = Path(os.getenv("REPORTS_DIR", str(BASE_DIR / "data" / "reports")))
 
 # Ingestion settings
 BILLBOARD_START_YEAR = 1960

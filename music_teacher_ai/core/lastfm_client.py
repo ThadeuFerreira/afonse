@@ -24,11 +24,16 @@ def _get_network():
 @cached_api("lastfm")
 def _fetch_tags(title: str, artist: str, limit: int) -> list[str]:
     """Inner call — raises on error so the cache is not written on failure."""
-    import pylast
     network = _get_network()
     track = network.get_track(artist, title)
     top_tags = track.get_top_tags(limit=limit)
-    return [t.item.get_name().lower() for t in top_tags]
+    tags = [t.item.get_name().lower() for t in top_tags if t.item.get_name()]
+    if tags:
+        return tags
+
+    # Fallback for tracks that have no direct tag data in Last.fm.
+    artist_top_tags = network.get_artist(artist).get_top_tags(limit=limit)
+    return [t.item.get_name().lower() for t in artist_top_tags if t.item.get_name()]
 
 
 def get_tags(title: str, artist: str, limit: int = 5) -> list[str]:

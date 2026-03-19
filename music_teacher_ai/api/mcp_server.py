@@ -154,6 +154,41 @@ TOOLS = [
             "required": ["playlist_id"],
         },
     },
+    {
+        "name": "get_config",
+        "description": (
+            "Return the current credential configuration status. "
+            "Values are masked — this is safe to call without authentication."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "configure",
+        "description": (
+            "Set or update API credentials stored in .env. "
+            "Requires the admin_token (found in .env as ADMIN_TOKEN or printed by "
+            "'music-teacher config'). Only recognised credential keys are accepted."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "admin_token": {
+                    "type": "string",
+                    "description": "ADMIN_TOKEN from .env — required to authorise credential changes",
+                },
+                "credentials": {
+                    "type": "object",
+                    "description": (
+                        "Map of credential key → new value. "
+                        "Allowed keys: GENIUS_ACCESS_TOKEN, SPOTIFY_CLIENT_ID, "
+                        "SPOTIFY_CLIENT_SECRET, LASTFM_API_KEY, DATABASE_PATH, API_CACHE_DIR"
+                    ),
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+            "required": ["admin_token", "credentials"],
+        },
+    },
 ]
 
 
@@ -253,6 +288,33 @@ def dispatch(tool_name: str, inputs: dict[str, Any]) -> Any:
             return pm.export_format(inputs["playlist_id"], inputs.get("format", "m3u"))
         except (FileNotFoundError, ValueError) as exc:
             return {"error": str(exc)}
+
+    if tool_name == "get_config":
+        from music_teacher_ai.config.credentials import current_status
+        return current_status()
+
+    if tool_name == "configure":
+        from music_teacher_ai.config.credentials import (
+            verify_admin_token,
+            ALLOWED_KEYS,
+            update_env,
+            current_status,
+        )
+        if not verify_admin_token(inputs.get("admin_token", "")):
+            return {"error": "Invalid admin_token"}
+        credentials = inputs.get("credentials", {})
+        if not isinstance(credentials, dict) or not credentials:
+            return {"error": "credentials must be a non-empty object"}
+        unknown = set(credentials) - ALLOWED_KEYS
+        if unknown:
+            return {
+                "error": f"Unknown key(s): {sorted(unknown)}. Allowed: {sorted(ALLOWED_KEYS)}"
+            }
+        update_env(credentials)
+        return {
+            "updated": sorted(credentials.keys()),
+            "status": current_status(),
+        }
 
     return {"error": f"Unknown tool: {tool_name}"}
 

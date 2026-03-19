@@ -1,5 +1,6 @@
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from music_teacher_ai.database.sqlite import get_session
@@ -8,6 +9,22 @@ from music_teacher_ai.playlists.models import PlaylistQuery
 from music_teacher_ai.search.keyword_search import search_songs
 from music_teacher_ai.search.semantic_search import semantic_search
 from sqlmodel import select
+
+_bearer = HTTPBearer()
+_LOCALHOST = {"127.0.0.1", "::1", "localhost"}
+
+
+def _require_admin(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Security(_bearer),
+) -> None:
+    """FastAPI dependency: localhost-only + valid ADMIN_TOKEN Bearer token."""
+    host = request.client.host if request.client else ""
+    if host not in _LOCALHOST:
+        raise HTTPException(status_code=403, detail="Config endpoint only accessible from localhost")
+    from music_teacher_ai.config.credentials import verify_admin_token
+    if not verify_admin_token(credentials.credentials):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
 
 app = FastAPI(
     title="Music Teacher AI",
@@ -30,6 +47,53 @@ class SimilarTextRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Config endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/config")
+def get_config():
+    """Return current credential status — values are masked, no auth required."""
+    from music_teacher_ai.config.credentials import current_status
+    return current_status()
+
+
+class ConfigUpdateRequest(BaseModel):
+    """Map of credential key → new value. Only recognised keys are accepted."""
+    credentials: dict[str, str]
+
+
+@app.post("/config", dependencies=[Security(_require_admin)])
+def post_config(req: ConfigUpdateRequest):
+    """
+    Update credentials stored in .env.
+
+    Requires:
+    - Request from 127.0.0.1 / ::1 (localhost only)
+    - Authorization: Bearer <ADMIN_TOKEN> header
+
+    Only keys listed in ALLOWED_KEYS are accepted; unknown keys are rejected
+    with 400 so callers cannot write arbitrary values into .env.
+    """
+    from music_teacher_ai.config.credentials import ALLOWED_KEYS, update_env, current_status
+
+    unknown = set(req.credentials) - ALLOWED_KEYS
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown credential key(s): {sorted(unknown)}. "
+                   f"Allowed: {sorted(ALLOWED_KEYS)}",
+        )
+    if not req.credentials:
+        raise HTTPException(status_code=400, detail="No credentials provided")
+
+    update_env(req.credentials)
+    return {
+        "updated": sorted(req.credentials.keys()),
+        "status": current_status(),
+    }
 
 
 @app.get("/status")
