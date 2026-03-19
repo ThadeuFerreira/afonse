@@ -287,6 +287,136 @@ def refresh_playlist(playlist_id: str):
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+# ---------------------------------------------------------------------------
+# Education endpoints
+# ---------------------------------------------------------------------------
+
+def _get_lyrics_text(song_id: int) -> str:
+    """Fetch lyrics text for a song or raise 404."""
+    with get_session() as session:
+        lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
+        if not lyr:
+            raise HTTPException(status_code=404, detail="Lyrics not found for this song")
+        return lyr.lyrics_text
+
+
+def _get_song_meta(song_id: int) -> tuple[str, str]:
+    """Return (title, artist_name) for a song or raise 404."""
+    with get_session() as session:
+        song = session.get(Song, song_id)
+        if not song:
+            raise HTTPException(status_code=404, detail="Song not found")
+        artist = session.get(Artist, song.artist_id)
+        return song.title, (artist.name if artist else "")
+
+
+@app.get("/education/exercise/{song_id}")
+def education_exercise(
+    song_id: int,
+    num_blanks: int = Query(10, ge=1, le=30),
+    min_word_length: int = Query(4, ge=2),
+):
+    """Generate a fill-in-the-blank exercise from a song's lyrics."""
+    from music_teacher_ai.education_services.exercises.fill_in_blank import generate
+
+    title, artist_name = _get_song_meta(song_id)
+    lyrics = _get_lyrics_text(song_id)
+    ex = generate(lyrics, song_title=title, artist=artist_name,
+                  num_blanks=num_blanks, min_word_length=min_word_length)
+    return {
+        "song_id": song_id,
+        "song_title": ex.song_title,
+        "artist": ex.artist,
+        "text_with_blanks": ex.text_with_blanks,
+        "answer_key": ex.answer_key,
+        "blanked_count": ex.blanked_count,
+        "total_words": ex.total_words,
+        "blanks": [{"number": b.number, "word": b.word} for b in ex.blanks],
+    }
+
+
+@app.get("/education/vocabulary/{song_id}")
+def education_vocabulary(
+    song_id: int,
+    min_word_length: int = Query(3, ge=1),
+):
+    """Analyse vocabulary difficulty (CEFR levels) in a song's lyrics."""
+    from music_teacher_ai.education_services.vocabulary.analyzer import analyze
+
+    title, artist_name = _get_song_meta(song_id)
+    lyrics = _get_lyrics_text(song_id)
+    result = analyze(lyrics, song_title=title, artist=artist_name,
+                     min_word_length=min_word_length)
+    return {
+        "song_id": song_id,
+        "song_title": result.song_title,
+        "artist": result.artist,
+        "total_unique_words": result.total_unique_words,
+        "dominant_level": result.dominant_level,
+        "level_counts": result.level_counts,
+        "level_percentages": result.level_percentages,
+        "words_by_level": {
+            level: [{"word": e.word, "occurrences": e.occurrences} for e in entries]
+            for level, entries in result.words_by_level.items()
+            if entries
+        },
+    }
+
+
+@app.get("/education/phrasal-verbs/{song_id}")
+def education_phrasal_verbs(song_id: int):
+    """Detect phrasal verbs in a song's lyrics."""
+    from music_teacher_ai.education_services.phrase_detection.phrasal_verbs import detect
+
+    title, artist_name = _get_song_meta(song_id)
+    lyrics = _get_lyrics_text(song_id)
+    report = detect(lyrics, song_title=title, artist=artist_name)
+    return {
+        "song_id": song_id,
+        "song_title": report.song_title,
+        "artist": report.artist,
+        "total_matches": report.total_matches,
+        "unique_phrasal_verbs": report.unique_phrasal_verbs,
+        "matches": [
+            {
+                "phrasal_verb": m.phrasal_verb,
+                "matched_text": m.matched_text,
+                "line_number": m.line_number,
+                "line_text": m.line_text,
+            }
+            for m in report.matches
+        ],
+    }
+
+
+class LessonRequest(BaseModel):
+    song_id: int
+    num_blanks: int = 10
+    min_word_length: int = 4
+
+
+@app.post("/education/lesson")
+def education_lesson(req: LessonRequest):
+    """Build a complete lesson (exercise + vocabulary + phrasal verbs) for a song."""
+    from music_teacher_ai.education_services.lesson_builder.builder import build_lesson
+
+    title, artist_name = _get_song_meta(req.song_id)
+    lyrics = _get_lyrics_text(req.song_id)
+    lesson = build_lesson(
+        song_id=req.song_id,
+        lyrics=lyrics,
+        song_title=title,
+        artist=artist_name,
+        num_blanks=req.num_blanks,
+        min_word_length=req.min_word_length,
+    )
+    return lesson.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Playlist export helpers
+# ---------------------------------------------------------------------------
+
 _CONTENT_TYPES = {
     "json": "application/json",
     "m3u": "audio/x-mpegurl",

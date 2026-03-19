@@ -359,6 +359,123 @@ def similar(
 
 
 @app.command()
+def exercise(
+    song_id: int = typer.Argument(..., help="Song database ID"),
+    num_blanks: int = typer.Option(10, "--blanks", "-n", help="Number of blanks to create."),
+    min_word_length: int = typer.Option(4, "--min-length", help="Minimum word length to blank."),
+):
+    """Generate a fill-in-the-blank exercise from a song's lyrics."""
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.education_services.exercises.fill_in_blank import generate
+    from sqlmodel import select
+
+    with get_session() as session:
+        lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
+        if not lyr:
+            console.print(f"[red]No lyrics found for song ID {song_id}.[/red]")
+            raise typer.Exit(1)
+        song = session.get(Song, song_id)
+        artist_obj = session.get(Artist, song.artist_id) if song else None
+        title = song.title if song else ""
+        artist_name = artist_obj.name if artist_obj else ""
+
+    ex = generate(lyr.lyrics_text, song_title=title, artist=artist_name,
+                  num_blanks=num_blanks, min_word_length=min_word_length)
+
+    from rich.panel import Panel
+    console.print(Panel(
+        f"[bold]{ex.song_title}[/bold] — {ex.artist}",
+        title="Fill-in-the-Blank Exercise",
+        border_style="cyan",
+        expand=False,
+    ))
+    console.print()
+    console.print(ex.text_with_blanks)
+    console.print()
+
+    table = Table(title="Answer Key", show_header=True, header_style="green")
+    table.add_column("#", width=4)
+    table.add_column("Word")
+    for b in ex.blanks:
+        table.add_row(str(b.number), b.word)
+    console.print(table)
+
+
+@app.command()
+def lesson(
+    song_id: int = typer.Argument(..., help="Song database ID"),
+    num_blanks: int = typer.Option(10, "--blanks", "-n", help="Number of fill-in-blank gaps."),
+    min_word_length: int = typer.Option(4, "--min-length", help="Minimum word length."),
+):
+    """Build a complete English lesson for a song (exercise + vocabulary + phrasal verbs)."""
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.education_services.lesson_builder.builder import build_lesson
+    from rich.panel import Panel
+    from sqlmodel import select
+
+    with get_session() as session:
+        lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
+        if not lyr:
+            console.print(f"[red]No lyrics found for song ID {song_id}.[/red]")
+            raise typer.Exit(1)
+        song = session.get(Song, song_id)
+        artist_obj = session.get(Artist, song.artist_id) if song else None
+        title = song.title if song else ""
+        artist_name = artist_obj.name if artist_obj else ""
+
+    les = build_lesson(
+        song_id=song_id,
+        lyrics=lyr.lyrics_text,
+        song_title=title,
+        artist=artist_name,
+        num_blanks=num_blanks,
+        min_word_length=min_word_length,
+    )
+
+    console.print(Panel(
+        f"[bold]{les.song_title}[/bold] — {les.artist}",
+        title="Music Lesson",
+        border_style="cyan",
+        expand=False,
+    ))
+
+    # Exercise
+    console.print("\n[bold cyan]── Fill-in-the-Blank Exercise ──[/bold cyan]")
+    console.print(les.exercise.text_with_blanks)
+    console.print()
+    key_table = Table(title="Answer Key", header_style="green")
+    key_table.add_column("#", width=4)
+    key_table.add_column("Word")
+    for b in les.exercise.blanks:
+        key_table.add_row(str(b.number), b.word)
+    console.print(key_table)
+
+    # Vocabulary
+    console.print("\n[bold cyan]── Vocabulary Analysis (CEFR) ──[/bold cyan]")
+    vocab = les.vocabulary
+    voc_table = Table(header_style="cyan")
+    voc_table.add_column("Level", width=6)
+    voc_table.add_column("Words", width=7)
+    voc_table.add_column("%", width=6)
+    voc_table.add_column("Examples")
+    for lv in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+        count = vocab.level_counts[lv]
+        pct = vocab.level_percentages[lv]
+        examples = ", ".join(e.word for e in vocab.words_by_level[lv][:5])
+        marker = " ◀" if lv == vocab.dominant_level else ""
+        voc_table.add_row(lv + marker, str(count), f"{pct}%", examples)
+    console.print(voc_table)
+
+    # Phrasal verbs
+    pv = les.phrasal_verbs
+    console.print(f"\n[bold cyan]── Phrasal Verbs ({pv.total_matches} matches) ──[/bold cyan]")
+    if pv.unique_phrasal_verbs:
+        console.print(", ".join(pv.unique_phrasal_verbs))
+    else:
+        console.print("[dim]None detected.[/dim]")
+
+
+@app.command()
 def doctor(
     skip_spotify: bool = typer.Option(False, "--skip-spotify", help="Skip Spotify API check."),
     skip_genius: bool = typer.Option(False, "--skip-genius", help="Skip Genius API check."),

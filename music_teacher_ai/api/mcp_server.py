@@ -203,6 +203,67 @@ TOOLS = [
         },
     },
     {
+        "name": "generate_exercise",
+        "description": (
+            "Generate a fill-in-the-blank exercise from the lyrics of a song in the database. "
+            "Blanks content words (not stop words) and returns numbered placeholders with an answer key."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "song_id": {"type": "integer", "description": "Song database ID"},
+                "num_blanks": {"type": "integer", "description": "Number of blanks to create (default 10, max 30)"},
+                "min_word_length": {"type": "integer", "description": "Minimum word length to blank (default 4)"},
+            },
+            "required": ["song_id"],
+        },
+    },
+    {
+        "name": "analyze_vocabulary",
+        "description": (
+            "Analyse the vocabulary difficulty of a song's lyrics using CEFR levels (A1–C2). "
+            "Returns counts and percentages per level and the dominant level."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "song_id": {"type": "integer", "description": "Song database ID"},
+                "min_word_length": {"type": "integer", "description": "Ignore words shorter than this (default 3)"},
+            },
+            "required": ["song_id"],
+        },
+    },
+    {
+        "name": "detect_phrasal_verbs",
+        "description": (
+            "Detect English phrasal verbs (e.g. 'give up', 'turn around') in a song's lyrics. "
+            "Returns all matches with line numbers and the unique set of phrasal verbs found."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "song_id": {"type": "integer", "description": "Song database ID"},
+            },
+            "required": ["song_id"],
+        },
+    },
+    {
+        "name": "create_lesson",
+        "description": (
+            "Build a complete English lesson for a song: fill-in-blank exercise, "
+            "CEFR vocabulary analysis, and phrasal verb detection in one response."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "song_id": {"type": "integer", "description": "Song database ID"},
+                "num_blanks": {"type": "integer", "description": "Number of fill-in-blank gaps (default 10)"},
+                "min_word_length": {"type": "integer", "description": "Minimum word length (default 4)"},
+            },
+            "required": ["song_id"],
+        },
+    },
+    {
         "name": "get_config",
         "description": (
             "Return the current credential configuration status. "
@@ -340,6 +401,111 @@ def _handle_enrich_database(inputs: dict[str, Any]) -> Any:
     )
 
 
+def _get_lyrics_for_song(song_id: int) -> tuple[str, str, str]:
+    """Return (lyrics_text, song_title, artist_name) or raise ValueError."""
+    from music_teacher_ai.database.models import Song, Artist, Lyrics
+    with get_session() as session:
+        lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
+        if not lyr:
+            raise ValueError(f"Lyrics not found for song_id={song_id}")
+        song = session.get(Song, song_id)
+        title = song.title if song else ""
+        artist_obj = session.get(Artist, song.artist_id) if song else None
+        artist_name = artist_obj.name if artist_obj else ""
+        return lyr.lyrics_text, title, artist_name
+
+
+def _handle_generate_exercise(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.education_services.exercises.fill_in_blank import generate
+
+    song_id = inputs["song_id"]
+    lyrics, title, artist_name = _get_lyrics_for_song(song_id)
+    ex = generate(
+        lyrics,
+        song_title=title,
+        artist=artist_name,
+        num_blanks=inputs.get("num_blanks", 10),
+        min_word_length=inputs.get("min_word_length", 4),
+    )
+    return {
+        "song_id": song_id,
+        "song_title": ex.song_title,
+        "artist": ex.artist,
+        "text_with_blanks": ex.text_with_blanks,
+        "answer_key": ex.answer_key,
+        "blanked_count": ex.blanked_count,
+        "total_words": ex.total_words,
+        "blanks": [{"number": b.number, "word": b.word} for b in ex.blanks],
+    }
+
+
+def _handle_analyze_vocabulary(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.education_services.vocabulary.analyzer import analyze
+
+    song_id = inputs["song_id"]
+    lyrics, title, artist_name = _get_lyrics_for_song(song_id)
+    result = analyze(
+        lyrics,
+        song_title=title,
+        artist=artist_name,
+        min_word_length=inputs.get("min_word_length", 3),
+    )
+    return {
+        "song_id": song_id,
+        "song_title": result.song_title,
+        "artist": result.artist,
+        "total_unique_words": result.total_unique_words,
+        "dominant_level": result.dominant_level,
+        "level_counts": result.level_counts,
+        "level_percentages": result.level_percentages,
+        "words_by_level": {
+            level: [{"word": e.word, "occurrences": e.occurrences} for e in entries]
+            for level, entries in result.words_by_level.items()
+            if entries
+        },
+    }
+
+
+def _handle_detect_phrasal_verbs(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.education_services.phrase_detection.phrasal_verbs import detect
+
+    song_id = inputs["song_id"]
+    lyrics, title, artist_name = _get_lyrics_for_song(song_id)
+    report = detect(lyrics, song_title=title, artist=artist_name)
+    return {
+        "song_id": song_id,
+        "song_title": report.song_title,
+        "artist": report.artist,
+        "total_matches": report.total_matches,
+        "unique_phrasal_verbs": report.unique_phrasal_verbs,
+        "matches": [
+            {
+                "phrasal_verb": m.phrasal_verb,
+                "matched_text": m.matched_text,
+                "line_number": m.line_number,
+                "line_text": m.line_text,
+            }
+            for m in report.matches
+        ],
+    }
+
+
+def _handle_create_lesson(inputs: dict[str, Any]) -> Any:
+    from music_teacher_ai.education_services.lesson_builder.builder import build_lesson
+
+    song_id = inputs["song_id"]
+    lyrics, title, artist_name = _get_lyrics_for_song(song_id)
+    lesson = build_lesson(
+        song_id=song_id,
+        lyrics=lyrics,
+        song_title=title,
+        artist=artist_name,
+        num_blanks=inputs.get("num_blanks", 10),
+        min_word_length=inputs.get("min_word_length", 4),
+    )
+    return lesson.to_dict()
+
+
 def _handle_get_config(_: dict[str, Any]) -> Any:
     return cfg_get_status()
 
@@ -367,6 +533,10 @@ _HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "get_playlist": _handle_get_playlist,
     "export_playlist": _handle_export_playlist,
     "enrich_database": _handle_enrich_database,
+    "generate_exercise": _handle_generate_exercise,
+    "analyze_vocabulary": _handle_analyze_vocabulary,
+    "detect_phrasal_verbs": _handle_detect_phrasal_verbs,
+    "create_lesson": _handle_create_lesson,
     "get_config": _handle_get_config,
     "configure": _handle_configure,
 }
