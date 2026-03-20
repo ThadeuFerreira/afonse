@@ -1,27 +1,38 @@
 from pathlib import Path
 from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Query, Request, Response, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from sqlmodel import select
 
 from music_teacher_ai.application.enrichment_service import EnrichRequest as EnrichServiceRequest
 from music_teacher_ai.application.enrichment_service import run_enrichment
 from music_teacher_ai.application.errors import ValidationError
 from music_teacher_ai.application.playlist_service import (
     create_playlist as svc_create_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     delete_playlist as svc_delete_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     export_playlist as svc_export_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     get_playlist as svc_get_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     list_playlists as svc_list_playlists,
+)
+from music_teacher_ai.application.playlist_service import (
     refresh_playlist as svc_refresh_playlist,
 )
 from music_teacher_ai.application.search_service import SearchRequest, keyword_search_with_expansion
 from music_teacher_ai.application.search_service import semantic_query as svc_semantic_query
+from music_teacher_ai.database.models import Artist, Lyrics, Song
 from music_teacher_ai.database.sqlite import get_session
-from music_teacher_ai.database.models import Song, Artist, Lyrics
 from music_teacher_ai.playlists.models import PlaylistQuery
 from music_teacher_ai.search.keyword_search import search_songs
-from sqlmodel import select
 
 _bearer = HTTPBearer()
 _LOCALHOST = {"127.0.0.1", "::1", "localhost"}
@@ -118,8 +129,9 @@ def post_config(req: ConfigUpdateRequest):
 
 @app.get("/status")
 def status():
-    from music_teacher_ai.config.settings import DATABASE_PATH
     from sqlmodel import func
+
+    from music_teacher_ai.config.settings import DATABASE_PATH
     from music_teacher_ai.database.models import Artist, Embedding, Lyrics, VocabularyIndex
 
     db_size_bytes = DATABASE_PATH.stat().st_size if DATABASE_PATH.exists() else 0

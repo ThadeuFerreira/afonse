@@ -118,6 +118,10 @@ def status():
             select(func.count(func.distinct(Chart.date)))
         ).one()
 
+    from music_teacher_ai.config.settings import DATABASE_PATH
+
+    db_size_bytes = Path(DATABASE_PATH).stat().st_size if Path(DATABASE_PATH).exists() else 0
+
     table = Table(title="Music Teacher AI – Database Status")
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="green")
@@ -125,6 +129,7 @@ def status():
     table.add_row("Lyrics", str(lyrics))
     table.add_row("Embeddings", str(embeddings))
     table.add_row("Chart entries", str(years))
+    table.add_row("Database size", str(db_size_bytes))
     console.print(table)
 
 

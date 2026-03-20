@@ -53,12 +53,12 @@ jobs:
         run: uv run ruff check .
 
       - name: Pytest (exclude external smoke suite)
-        run: uv run pytest tests --ignore=tests/smoke
+        run: timeout 20m uv run pytest tests --ignore=tests/smoke
 
       - name: Startup smoke
         run: |
-          uv run music-teacher status
-          uv run python - <<'PY'
+          timeout 5m uv run music-teacher status
+          timeout 5m uv run python - <<'PY'
           from music_teacher_ai.api.rest_api import app
           from music_teacher_ai.api.rest_api import health
 

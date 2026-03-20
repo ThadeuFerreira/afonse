@@ -182,6 +182,36 @@ uv run ruff check .
 
 ---
 
+## Release Readiness Checklist (v0.1)
+
+Use `RELEASE_CHECKLIST.md` as the release gate. Mark items only after evidence is collected.
+
+Run the automated checklist gates locally:
+
+```bash
+uv sync --frozen --all-groups --all-extras
+
+timeout 20m uv run ruff check .
+timeout 20m uv run pytest tests --ignore=tests/smoke
+
+timeout 5m uv run music-teacher status
+timeout 5m uv run python - <<'PY'
+from music_teacher_ai.api.rest_api import app, health
+
+assert health().get("status") == "ok"
+assert "/health" in {route.path for route in app.routes}
+print("startup smoke passed")
+PY
+```
+
+Run the same gate in CI with GitHub Actions:
+
+- Workflow: `.github/workflows/release-gate.yml`
+- Triggers: pull requests, pushes to `main`, or manual `workflow_dispatch`
+- Artifact: `release-checklist` (uploads `RELEASE_CHECKLIST.md`)
+
+---
+
 ## Resource Usage (estimated)
 
 | Resource | Usage |
