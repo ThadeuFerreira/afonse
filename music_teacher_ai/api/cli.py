@@ -1120,6 +1120,7 @@ def start(
 
         from music_teacher_ai.api.rest_api import app as api_app
         console.print(f"[green]Starting API server on {host}:{port}[/green]")
+        console.print(f"[cyan]Web interface available at: http://{host}:{port}/web[/cyan]")
         uvicorn.run(api_app, host=host, port=port)
     except ImportError:
         console.print(

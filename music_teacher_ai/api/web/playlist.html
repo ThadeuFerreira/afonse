@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Playlist – Music Teacher AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="index.html">←</a>
+    <h1>Playlist</h1>
+  </div>
+
+  <div class="page">
+    <div class="card">
+      <label for="pl-name">Playlist name</label>
+      <input id="pl-name" type="text" placeholder="e.g. Dream songs">
+    </div>
+
+    <div class="card">
+      <h2>Songs</h2>
+      <div id="pl-list"></div>
+      <a href="search.html" class="btn btn-secondary" style="margin-top:12px;">+ Add songs</a>
+    </div>
+
+    <div id="pl-msg"></div>
+
+    <button id="pl-save" class="btn btn-primary">Save playlist</button>
+    <button id="pl-export" class="btn btn-secondary">Export M3U</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

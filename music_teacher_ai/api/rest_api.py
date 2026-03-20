@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import select
 
@@ -64,6 +65,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=_lifespan,
 )
+
+_WEB_DIR = Path(__file__).resolve().parent / "web"
+app.mount("/web", StaticFiles(directory=_WEB_DIR, html=True), name="web")
 
 
 class QueryRequest(BaseModel):

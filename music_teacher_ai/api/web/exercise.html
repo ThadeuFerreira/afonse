@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exercise – Music Teacher AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="javascript:history.back()">←</a>
+    <h1>Gap-fill Exercise</h1>
+  </div>
+
+  <div class="page">
+    <div class="card">
+      <p id="ex-song-info" style="margin:0;font-weight:600;"></p>
+
+      <div id="ex-no-song" style="display:none;margin-top:8px;">
+        <label for="ex-song-id">Song ID</label>
+        <input id="ex-song-id" type="number" placeholder="Enter song ID" min="1">
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Difficulty (% blanked)</label>
+      <div class="pill-group">
+        <button class="pill" data-level="10">10%</button>
+        <button class="pill" data-level="20">20%</button>
+        <button class="pill" data-level="30">30%</button>
+        <button class="pill" data-level="40">40%</button>
+      </div>
+    </div>
+
+    <button id="ex-generate" class="btn btn-primary">Generate exercise</button>
+
+    <button id="ex-download" class="btn btn-secondary" style="display:none;">Download .txt</button>
+
+    <div id="ex-output" class="exercise-out" style="min-height:60px;"></div>
+  </div>
+
+  <script>
+    // Show manual ID input if no song selected from URL
+    document.addEventListener('DOMContentLoaded', () => {
+      const id = new URLSearchParams(location.search).get('id');
+      const noSong = document.getElementById('ex-no-song');
+      if (!id && noSong) noSong.style.display = 'block';
+    });
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

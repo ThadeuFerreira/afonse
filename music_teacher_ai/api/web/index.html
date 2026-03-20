@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Music Teacher AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎵 Music Teacher AI</h1>
+    <a href="playlist.html" title="Playlist">🎶 <span id="cart-count"></span></a>
+  </div>
+
+  <div class="page">
+    <form id="home-form" class="home-search">
+      <input id="home-q" type="text" placeholder="Search songs, artists, genres…" autocomplete="off">
+      <button class="btn btn-primary" type="submit">Go</button>
+    </form>
+
+    <div id="recent-chips" class="chip-row"></div>
+
+    <nav class="nav-grid">
+      <a class="nav-tile" href="search.html">
+        <span class="icon">🔍</span>Search
+      </a>
+      <a class="nav-tile" href="playlist.html">
+        <span class="icon">🎶</span>Playlists
+      </a>
+      <a class="nav-tile" href="exercise.html">
+        <span class="icon">✏️</span>Exercises
+      </a>
+      <a class="nav-tile" href="search.html?semantic=1">
+        <span class="icon">🧠</span>Semantic
+      </a>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

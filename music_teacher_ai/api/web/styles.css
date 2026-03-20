@@ -1,0 +1,260 @@
+/* =========================================================
+   Music Teacher AI – Mobile-first stylesheet
+   Max width: 480px  |  No frameworks  |  < 10 KB
+   ========================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --accent:   #2563eb;
+  --accent-d: #1d4ed8;
+  --danger:   #dc2626;
+  --bg:       #f8fafc;
+  --card:     #ffffff;
+  --border:   #e2e8f0;
+  --text:     #1e293b;
+  --muted:    #64748b;
+  --radius:   10px;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 14px 80px;
+}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--accent);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar h1 { margin: 0; font-size: 1.05rem; flex: 1; }
+.topbar a  { color: #fff; text-decoration: none; font-size: 1.25rem; }
+
+/* ── Cards ───────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-top: 12px;
+}
+.card h2 { margin: 0 0 10px; font-size: 1rem; }
+.card p  { margin: 4px 0; font-size: 0.9rem; color: var(--muted); }
+
+/* ── Inputs ──────────────────────────────────────────────── */
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  margin-top: 6px;
+  appearance: none;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+textarea { min-height: 120px; resize: vertical; }
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  margin-top: 10px;
+  transition: background .15s;
+}
+.btn-primary  { background: var(--accent);  color: #fff; }
+.btn-primary:hover  { background: var(--accent-d); }
+.btn-secondary { background: var(--border); color: var(--text); }
+.btn-secondary:hover { background: #cbd5e1; }
+.btn-danger   { background: var(--danger);  color: #fff; }
+.btn-sm {
+  display: inline-block;
+  width: auto;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  margin-top: 0;
+}
+
+/* ── Nav grid (home) ─────────────────────────────────────── */
+.nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.nav-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 10px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.nav-tile .icon { font-size: 1.8rem; }
+.nav-tile:hover { background: #eff6ff; border-color: var(--accent); }
+
+/* ── Result list ─────────────────────────────────────────── */
+.result-list { list-style: none; margin: 0; padding: 0; }
+.result-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.result-item .title { font-weight: 700; font-size: 0.97rem; }
+.result-item .meta  { font-size: 0.82rem; color: var(--muted); margin: 3px 0 8px; }
+.result-item .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Lyrics block ────────────────────────────────────────── */
+.lyrics-block {
+  white-space: pre-wrap;
+  font-size: 0.93rem;
+  line-height: 1.65;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-top: 10px;
+}
+
+/* ── Exercise output ─────────────────────────────────────── */
+.exercise-out {
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-top: 10px;
+}
+
+/* ── Badges ──────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #dbeafe;
+  color: var(--accent-d);
+}
+
+/* ── Difficulty pills ────────────────────────────────────── */
+.pill-group { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.pill {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--muted);
+}
+.pill.active {
+  border-color: var(--accent);
+  background: #dbeafe;
+  color: var(--accent-d);
+}
+
+/* ── Playlist songs ──────────────────────────────────────── */
+.pl-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.pl-item:last-child { border-bottom: none; }
+.pl-item .info { flex: 1; font-size: 0.9rem; }
+.pl-item .info small { color: var(--muted); font-size: 0.8rem; }
+.pl-remove { background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1.1rem; }
+
+/* ── Status / empty ──────────────────────────────────────── */
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 32px 0;
+  font-size: 0.92rem;
+}
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  margin-top: 10px;
+}
+.alert-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+.alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.alert-error   { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+
+/* ── Spinner ─────────────────────────────────────────────── */
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 20px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Search bar (home) ───────────────────────────────────── */
+.home-search { display: flex; gap: 8px; margin-top: 16px; }
+.home-search input { flex: 1; margin-top: 0; }
+.home-search button { width: auto; margin-top: 0; padding: 11px 16px; }
+
+/* ── Recent chips ────────────────────────────────────────── */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: var(--accent-d);
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: none;
+}
+.chip:hover { background: #bae6fd; }

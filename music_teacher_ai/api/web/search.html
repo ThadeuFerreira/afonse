@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search – Music Teacher AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="index.html">←</a>
+    <h1>Search</h1>
+    <a href="playlist.html">🎶</a>
+  </div>
+
+  <div class="page">
+    <form id="search-form">
+      <input id="search-q" type="text" placeholder="Song, artist, keyword…" autocomplete="off">
+
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:0.88rem;">
+        <label><input type="radio" name="mode" id="mode-keyword" checked> Keyword</label>
+        <label><input type="radio" name="mode" id="mode-semantic"> Semantic</label>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="margin-top:10px;">Search</button>
+    </form>
+
+    <div id="search-results"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
