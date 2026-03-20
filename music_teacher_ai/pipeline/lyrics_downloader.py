@@ -33,7 +33,7 @@ from rich.progress import (
 from sqlmodel import select
 
 from music_teacher_ai.core.lyrics_client import fetch_lyrics
-from music_teacher_ai.database.models import Artist, Song, Lyrics, IngestionFailure
+from music_teacher_ai.database.models import Artist, IngestionFailure, Lyrics, Song
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.reporter import PipelineReport
 

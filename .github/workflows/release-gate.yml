@@ -1,0 +1,81 @@
+name: Release Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    name: Lint, Tests, Startup Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONUNBUFFERED: "1"
+      DATABASE_PATH: ${{ github.workspace }}/.ci-data/music.db
+      FAISS_INDEX_PATH: ${{ github.workspace }}/.ci-data/embeddings.index
+      PLAYLISTS_DIR: ${{ github.workspace }}/.ci-data/playlists
+      EXERCISES_DIR: ${{ github.workspace }}/.ci-data/exercises
+      API_CACHE_DIR: ${{ github.workspace }}/.ci-data/api_cache
+      REPORTS_DIR: ${{ github.workspace }}/.ci-data/reports
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Prepare runtime directories
+        run: |
+          mkdir -p .ci-data
+          mkdir -p .ci-data/playlists
+          mkdir -p .ci-data/exercises
+          mkdir -p .ci-data/api_cache
+          mkdir -p .ci-data/reports
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups --all-extras
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Pytest (exclude external smoke suite)
+        run: uv run pytest tests --ignore=tests/smoke
+
+      - name: Startup smoke
+        run: |
+          uv run music-teacher status
+          uv run python - <<'PY'
+          from fastapi.testclient import TestClient
+          from music_teacher_ai.api.rest_api import app
+
+          with TestClient(app) as client:
+              response = client.get("/health")
+              assert response.status_code == 200, response.text
+              payload = response.json()
+              assert payload.get("status") == "ok", payload
+          print("startup smoke passed")
+          PY
+
+      - name: Ensure release checklist exists
+        run: test -f RELEASE_CHECKLIST.md
+
+      - name: Upload release checklist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-checklist
+          path: RELEASE_CHECKLIST.md
+          if-no-files-found: error

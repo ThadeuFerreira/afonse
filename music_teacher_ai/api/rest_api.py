@@ -39,10 +39,21 @@ def _require_admin(
     if not verify_admin_token(credentials.credentials):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def _lifespan(app_: FastAPI):
+    from music_teacher_ai.demo.loader import auto_load_demo_if_needed
+    auto_load_demo_if_needed()
+    yield
+
+
 app = FastAPI(
     title="Music Teacher AI",
     description="API for discovering songs suitable for English language learning.",
     version="0.1.0",
+    lifespan=_lifespan,
 )
 
 

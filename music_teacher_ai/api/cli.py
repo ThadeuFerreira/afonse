@@ -5,22 +5,32 @@ from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
-from sqlmodel import select, func
+from sqlmodel import func, select
 
 from music_teacher_ai.application.enrichment_service import EnrichRequest, run_enrichment
 from music_teacher_ai.application.errors import ValidationError
 from music_teacher_ai.application.playlist_service import (
     create_playlist as svc_create_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     delete_playlist as svc_delete_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     export_playlist as svc_export_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     get_playlist as svc_get_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     list_playlists as svc_list_playlists,
+)
+from music_teacher_ai.application.playlist_service import (
     refresh_playlist as svc_refresh_playlist,
 )
 from music_teacher_ai.application.search_service import SearchRequest, keyword_search_with_expansion
 from music_teacher_ai.application.search_service import semantic_query as svc_semantic_query
+from music_teacher_ai.database.models import Chart, Embedding, Lyrics, Song
 from music_teacher_ai.database.sqlite import create_db, get_session
-from music_teacher_ai.database.models import Song, Lyrics, Embedding, Chart, IngestionFailure
 
 app = typer.Typer(help="Music Teacher AI – manage and query the local knowledge base.")
 playlist_app = typer.Typer(help="Create and manage song playlists.")
@@ -48,10 +58,10 @@ def init(
 ):
     """Initialize the knowledge base from scratch."""
     from music_teacher_ai.pipeline.charts_ingestion import ingest_charts
-    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
-    from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
-    from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
+    from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
+    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
+    from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
 
     chart_limit = 10 if quick else None
     # Validate start and end years before computing the effective range.
@@ -125,10 +135,10 @@ def update(
     year: Optional[int] = typer.Option(None, help="Year to re-ingest from Billboard."),
 ):
     """Incrementally update the knowledge base."""
-    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
-    from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
-    from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
+    from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
+    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
+    from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
 
     if year:
         from music_teacher_ai.pipeline.charts_ingestion import ingest_charts
@@ -148,10 +158,9 @@ def update(
 
 
 def _spotify_update(genre: Optional[str], artist: Optional[str]) -> None:
-    import spotipy
-    from music_teacher_ai.core.spotify_client import get_client, _parse_track
-    from music_teacher_ai.database.models import Artist as ArtistModel, Song as SongModel
-    from sqlmodel import select
+
+
+    from music_teacher_ai.core.spotify_client import get_client
 
     sp = get_client()
     if artist:
@@ -174,10 +183,13 @@ def _spotify_update(genre: Optional[str], artist: Optional[str]) -> None:
 
 
 def _upsert_track(sp, item: dict) -> None:
-    from music_teacher_ai.core.spotify_client import _parse_track
-    from music_teacher_ai.database.models import Artist as ArtistModel, Song as SongModel, Album
-    from sqlmodel import select
     import json
+
+    from sqlmodel import select
+
+    from music_teacher_ai.core.spotify_client import _parse_track
+    from music_teacher_ai.database.models import Artist as ArtistModel
+    from music_teacher_ai.database.models import Song as SongModel
 
     meta = _parse_track(sp, item)
     with get_session() as session:
@@ -305,7 +317,7 @@ def search(
 
     if not results:
         console.print("[yellow]No results found locally.[/yellow]")
-        from music_teacher_ai.pipeline.expansion import EXPANSION_THRESHOLD, trigger_expansion
+        from music_teacher_ai.pipeline.expansion import trigger_expansion
         if trigger_expansion(genre=genre, artist=artist, year=year, word=word):
             console.print("[dim]Triggering discovery job — future searches may return new songs.[/dim]")
         return
@@ -330,8 +342,8 @@ def similar(
     """Find songs with lyrically similar content."""
     from music_teacher_ai.search.similar_search import (
         find_similar_by_song,
-        find_similar_by_title,
         find_similar_by_text,
+        find_similar_by_title,
     )
 
     try:
@@ -371,10 +383,11 @@ def exercise_show(
     min_word_length: int = typer.Option(4, "--min-length", help="Minimum word length to blank."),
 ):
     """Generate a numbered fill-in-the-blank exercise from a song's lyrics."""
-    from music_teacher_ai.database.models import Artist, Lyrics, Song
-    from music_teacher_ai.education_services.exercises.fill_in_blank import generate
     from rich.panel import Panel
     from sqlmodel import select
+
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.education_services.exercises.fill_in_blank import generate
 
     with get_session() as session:
         lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
@@ -414,10 +427,11 @@ def exercise_lesson(
     min_word_length: int = typer.Option(4, "--min-length", help="Minimum word length."),
 ):
     """Build a complete English lesson for a song (exercise + vocabulary + phrasal verbs)."""
-    from music_teacher_ai.database.models import Artist, Lyrics, Song
-    from music_teacher_ai.education_services.lesson_builder.builder import build_lesson
     from rich.panel import Panel
     from sqlmodel import select
+
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.education_services.lesson_builder.builder import build_lesson
 
     with get_session() as session:
         lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
@@ -438,7 +452,6 @@ def exercise_lesson(
         min_word_length=min_word_length,
     )
 
-    from rich.panel import Panel
     console.print(Panel(
         f"[bold]{les.song_title}[/bold] — {les.artist}",
         title="Music Lesson",
@@ -505,14 +518,15 @@ def exercise_generate(
 
       music-teacher exercise generate --semantic "songs about dreams" --random
     """
+    from sqlmodel import select
+
     from music_teacher_ai.config.settings import EXERCISES_DIR
-    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.database.models import Artist, Lyrics
     from music_teacher_ai.education_services.exercises.gap_fill import (
         generate_manual,
         generate_random,
         render_text,
     )
-    from sqlmodel import select
 
     if not any([song, semantic, playlist]):
         console.print("[red]Provide --song, --semantic, or --playlist.[/red]")
@@ -573,8 +587,9 @@ def exercise_generate(
             _expand_and_exit(word=results[0]["title"] if results else None)
 
     else:  # --song
-        from music_teacher_ai.database.models import Song as SongModel
         from sqlmodel import select
+
+        from music_teacher_ai.database.models import Song as SongModel
         with get_session() as session:
             songs = session.exec(
                 select(SongModel).where(SongModel.title.ilike(f"%{song}%")).limit(1)
@@ -626,8 +641,8 @@ def doctor(
     """
     import os
     import tempfile
-    import traceback
     from pathlib import Path
+
     from rich.table import Table as RichTable
 
     results: list[tuple[str, str, str]] = []  # (component, status, detail)
@@ -663,8 +678,9 @@ def doctor(
     # ------------------------------------------------------------------
     if not skip_spotify:
         with check("Spotify: authentication"):
-            from music_teacher_ai.core.spotify_client import get_client, SpotifyPremiumRequiredError
             from spotipy.exceptions import SpotifyException
+
+            from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError, get_client
             sp = get_client()
             try:
                 r = sp.search(q="Imagine", type="track", limit=1)
@@ -678,13 +694,19 @@ def doctor(
                 raise
 
         with check("Spotify: search_track() for 'Imagine'"):
-            from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
+            from music_teacher_ai.core.spotify_client import (
+                SpotifyPremiumRequiredError,
+                search_track,
+            )
             meta = search_track("Imagine", "John Lennon")
             assert meta is not None, "Returned None"
             assert meta.spotify_id
 
         with check("Spotify: audio features populated"):
-            from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
+            from music_teacher_ai.core.spotify_client import (
+                SpotifyPremiumRequiredError,
+                search_track,
+            )
             meta = search_track("Imagine", "John Lennon")
             assert meta and meta.energy is not None
 
@@ -736,6 +758,7 @@ def doctor(
             import os as _os
             _os.environ["DATABASE_PATH"] = str(Path(tmp) / "test.db")
             import importlib
+
             import music_teacher_ai.config.settings as _s
             import music_teacher_ai.database.sqlite as _db
             importlib.reload(_s)
@@ -743,8 +766,8 @@ def doctor(
             _db.create_db()
 
     with check("Database: insert and query"):
-        from music_teacher_ai.database.sqlite import get_session
         from music_teacher_ai.database.models import Artist
+        from music_teacher_ai.database.sqlite import get_session
         with get_session() as s:
             a = Artist(name="__smoke_test__")
             s.add(a)
@@ -757,13 +780,15 @@ def doctor(
     # ------------------------------------------------------------------
     with check("Embeddings: model loads"):
         from sentence_transformers import SentenceTransformer
+
         from music_teacher_ai.config.settings import EMBEDDING_MODEL
         SentenceTransformer(EMBEDDING_MODEL)
 
     with check("Embeddings: correct vector shape (384-dim)"):
         import numpy as np
         from sentence_transformers import SentenceTransformer
-        from music_teacher_ai.config.settings import EMBEDDING_MODEL, EMBEDDING_DIM
+
+        from music_teacher_ai.config.settings import EMBEDDING_DIM, EMBEDDING_MODEL
         model = SentenceTransformer(EMBEDDING_MODEL)
         vec = model.encode(["test"], normalize_embeddings=True)
         assert vec.shape == (1, EMBEDDING_DIM), f"Got {vec.shape}"
@@ -772,8 +797,9 @@ def doctor(
     # 9. FAISS
     # ------------------------------------------------------------------
     with check("FAISS: index create / add / search"):
-        import numpy as np
         import faiss
+        import numpy as np
+
         from music_teacher_ai.config.settings import EMBEDDING_DIM
         idx = faiss.IndexFlatIP(EMBEDDING_DIM)
         v = np.random.randn(1, EMBEDDING_DIM).astype(np.float32)
@@ -976,14 +1002,14 @@ def config(
     """
     from rich.panel import Panel
     from rich.table import Table as RichTable
+
     from music_teacher_ai.config.credentials import (
         FIELDS,
         current_status,
         get_admin_token,
-        update_env,
-        read_env,
         mask,
-        FIELD_MAP,
+        read_env,
+        update_env,
     )
 
     if show:
@@ -1051,5 +1077,53 @@ def config(
     ))
 
 
+@app.command()
+def start(
+    minimal: bool = typer.Option(False, "--minimal", help="Start with the built-in demo dataset."),
+    host: str = typer.Option("127.0.0.1", "--host", help="API server host."),
+    port: int = typer.Option(8000, "--port", help="API server port."),
+):
+    """
+    Start the REST API server, optionally in minimal/demo mode.
+
+    In minimal mode the built-in 10-song demo dataset is loaded automatically
+    and no API credentials are required.
+
+    Example:
+
+      music-teacher start --minimal
+
+      music-teacher start --host 0.0.0.0 --port 8080
+    """
+    from music_teacher_ai.database.sqlite import create_db
+    from music_teacher_ai.demo.loader import (
+        auto_load_demo_if_needed,
+        load_demo_songs,
+        print_minimal_banner,
+    )
+
+    create_db()
+
+    if minimal:
+        load_demo_songs()
+        print_minimal_banner()
+    else:
+        auto_load_demo_if_needed()
+
+    try:
+        import uvicorn
+
+        from music_teacher_ai.api.rest_api import app as api_app
+        console.print(f"[green]Starting API server on {host}:{port}[/green]")
+        uvicorn.run(api_app, host=host, port=port)
+    except ImportError:
+        console.print(
+            "[yellow]uvicorn not installed — API server not started.[/yellow]\n"
+            "Install with: [cyan]pip install uvicorn[/cyan]"
+        )
+
+
 def main():
+    from music_teacher_ai.demo.loader import auto_load_demo_if_needed
+    auto_load_demo_if_needed()
     app()
