@@ -2,9 +2,10 @@
 Unit tests for similar_search helpers.
 These tests mock the FAISS index and database so no real data is needed.
 """
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 def _make_embedding(song_id: int, faiss_id: int) -> MagicMock:

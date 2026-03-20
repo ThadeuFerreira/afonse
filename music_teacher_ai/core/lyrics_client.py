@@ -1,6 +1,7 @@
 import re
 import threading
 from typing import Optional
+
 import lyricsgenius
 
 from music_teacher_ai.config.settings import GENIUS_ACCESS_TOKEN

@@ -3,8 +3,6 @@ Unit tests for music_teacher_ai/pipeline/reporter.py.
 No database or external API required.
 """
 import json
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -4,16 +4,19 @@ PlaylistManager – create, load, list, delete, and refresh playlists.
 Playlists are stored as JSON files under PLAYLISTS_DIR/{slug}/playlist.json.
 M3U and M3U8 exports are generated alongside the JSON on creation.
 """
-import json
 import re
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
 from music_teacher_ai.config.settings import PLAYLISTS_DIR
-from music_teacher_ai.playlists.models import Playlist, PlaylistQuery, PlaylistSong, _MAX_PLAYLIST_SIZE
 from music_teacher_ai.playlists.exporters import export_all
-
+from music_teacher_ai.playlists.models import (
+    _MAX_PLAYLIST_SIZE,
+    Playlist,
+    PlaylistQuery,
+    PlaylistSong,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -37,8 +40,8 @@ def _load_json(path: Path) -> Playlist:
 
 def _enrich_with_ids(song_dicts: list[dict]) -> list[PlaylistSong]:
     """Look up spotify_id and isrc_code for each song and return PlaylistSong objects."""
-    from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.database.models import Song
+    from music_teacher_ai.database.sqlite import get_session
 
     result = []
     with get_session() as session:
@@ -59,9 +62,10 @@ def _enrich_with_ids(song_dicts: list[dict]) -> list[PlaylistSong]:
 
 def _search_by_title(title: str, limit: int) -> list[dict]:
     """Filter Song.title with a case-insensitive substring match."""
-    from music_teacher_ai.database.sqlite import get_session
-    from music_teacher_ai.database.models import Song, Artist
     from sqlmodel import select
+
+    from music_teacher_ai.database.models import Artist, Song
+    from music_teacher_ai.database.sqlite import get_session
 
     with get_session() as session:
         songs = session.exec(

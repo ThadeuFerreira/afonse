@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Optional
+
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.exceptions import SpotifyException
+from spotipy.oauth2 import SpotifyClientCredentials
 
 from music_teacher_ai.config.settings import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
 from music_teacher_ai.core.api_cache import cached_api

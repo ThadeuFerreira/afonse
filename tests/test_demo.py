@@ -9,7 +9,6 @@ Validates:
   - print_minimal_banner() and credential warning output
 """
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -68,6 +67,7 @@ def fresh_db(tmp_path, monkeypatch):
     """Provide an isolated empty database for each test."""
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     import importlib
+
     import music_teacher_ai.config.settings as _s
     import music_teacher_ai.database.sqlite as _db
     importlib.reload(_s)
@@ -83,15 +83,17 @@ def fresh_db(tmp_path, monkeypatch):
 class TestIsDbEmpty:
     def test_empty_after_create(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         assert ldr.is_db_empty() is True
 
     def test_not_empty_after_insert(self, fresh_db):
+        import importlib
+
+        import music_teacher_ai.demo.loader as ldr
         from music_teacher_ai.database.models import Artist, Song
         from music_teacher_ai.database.sqlite import get_session
-        import importlib
-        import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
 
         with get_session() as session:
@@ -111,6 +113,7 @@ class TestIsDbEmpty:
 class TestLoadDemoSongs:
     def test_inserts_ten_songs(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         count = ldr.load_demo_songs()
@@ -118,13 +121,15 @@ class TestLoadDemoSongs:
 
     def test_songs_present_after_load(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Song
         from music_teacher_ai.database.sqlite import get_session
-        from sqlmodel import select
 
         with get_session() as session:
             songs = session.exec(select(Song)).all()
@@ -132,13 +137,15 @@ class TestLoadDemoSongs:
 
     def test_artists_created(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Artist
         from music_teacher_ai.database.sqlite import get_session
-        from sqlmodel import select
 
         with get_session() as session:
             artists = session.exec(select(Artist)).all()
@@ -146,13 +153,15 @@ class TestLoadDemoSongs:
 
     def test_lyrics_inserted(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Lyrics
         from music_teacher_ai.database.sqlite import get_session
-        from sqlmodel import select
 
         with get_session() as session:
             lyric_rows = session.exec(select(Lyrics)).all()
@@ -161,15 +170,17 @@ class TestLoadDemoSongs:
     def test_idempotent_second_call(self, fresh_db):
         """Calling load_demo_songs() twice must not duplicate rows."""
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
         second = ldr.load_demo_songs()
         assert second == 0   # nothing new inserted
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Song
         from music_teacher_ai.database.sqlite import get_session
-        from sqlmodel import select
 
         with get_session() as session:
             count = len(session.exec(select(Song)).all())
@@ -178,13 +189,15 @@ class TestLoadDemoSongs:
     def test_shared_artists_deduplicated(self, fresh_db):
         """The Beatles appear twice — only one Artist row should be created."""
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Artist
         from music_teacher_ai.database.sqlite import get_session
-        from sqlmodel import select
 
         with get_session() as session:
             beatles = session.exec(
@@ -200,6 +213,7 @@ class TestLoadDemoSongs:
 class TestAutoLoad:
     def test_activates_on_empty_db(self, fresh_db, capsys):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         activated = ldr.auto_load_demo_if_needed()
@@ -207,6 +221,7 @@ class TestAutoLoad:
 
     def test_does_not_activate_on_populated_db(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()          # populate
@@ -215,14 +230,16 @@ class TestAutoLoad:
 
     def test_no_duplicate_insert_on_second_call(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.auto_load_demo_if_needed()   # first: loads
         ldr.auto_load_demo_if_needed()   # second: skips
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Song
         from music_teacher_ai.database.sqlite import get_session
-        from sqlmodel import select
 
         with get_session() as session:
             count = len(session.exec(select(Song)).all())
@@ -236,6 +253,7 @@ class TestAutoLoad:
 class TestBanner:
     def test_banner_runs_without_error(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.print_minimal_banner()   # must not raise
@@ -246,6 +264,7 @@ class TestBanner:
             monkeypatch.delenv(key, raising=False)
 
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr._print_credential_warning()   # must not raise
@@ -256,6 +275,7 @@ class TestBanner:
         monkeypatch.setenv("LASTFM_API_KEY", "key")
 
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr._print_credential_warning()   # must not raise and prints nothing
@@ -268,6 +288,7 @@ class TestBanner:
 class TestDemoSearchable:
     def test_song_title_searchable(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
@@ -275,21 +296,22 @@ class TestDemoSearchable:
         from music_teacher_ai.playlists.manager import _search_by_title
         importlib.reload(__import__("music_teacher_ai.playlists.manager",
                                     fromlist=["_search_by_title"]))
-        from music_teacher_ai.playlists.manager import _search_by_title
 
         results = _search_by_title("Imagine", limit=10)
         assert any(r["title"] == "Imagine" for r in results)
 
     def test_lyrics_accessible_for_exercise(self, fresh_db):
         import importlib
+
         import music_teacher_ai.demo.loader as ldr
         importlib.reload(ldr)
         ldr.load_demo_songs()
 
+        from sqlmodel import select
+
         from music_teacher_ai.database.models import Lyrics, Song
         from music_teacher_ai.database.sqlite import get_session
         from music_teacher_ai.education_services.exercises.gap_fill import generate_random
-        from sqlmodel import select
 
         with get_session() as session:
             songs = session.exec(select(Song)).all()

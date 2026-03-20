@@ -14,13 +14,13 @@ workers, a full 1960→today ingest takes seconds instead of hours.
 import dataclasses
 import io
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date
 from typing import Callable, Iterator
 
 import pandas as pd
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from music_teacher_ai.config.settings import BILLBOARD_START_YEAR
 from music_teacher_ai.core.api_cache import cached_api

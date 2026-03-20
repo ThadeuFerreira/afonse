@@ -1,5 +1,5 @@
 import random
-from typing import Callable, Optional
+from typing import Optional
 
 from music_teacher_ai.pipeline.types import CandidateSong, Variant
 

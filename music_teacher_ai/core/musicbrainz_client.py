@@ -11,8 +11,8 @@ from typing import Optional
 
 import musicbrainzngs
 
-from music_teacher_ai.core.spotify_client import TrackMetadata
 from music_teacher_ai.core.api_cache import cached_api
+from music_teacher_ai.core.spotify_client import TrackMetadata
 
 musicbrainzngs.set_useragent("MusicTeacherAI", "0.1", "https://github.com/music-teacher-ai")
 

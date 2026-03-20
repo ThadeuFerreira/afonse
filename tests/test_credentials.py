@@ -2,8 +2,6 @@
 Unit tests for music_teacher_ai/config/credentials.py.
 No database, external API, or real .env file required.
 """
-import pytest
-from pathlib import Path
 
 
 # ---------------------------------------------------------------------------

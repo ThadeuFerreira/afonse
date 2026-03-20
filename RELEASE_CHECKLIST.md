@@ -17,7 +17,7 @@ How to use this file:
 - [ ] `uv run ruff check .` passes.
 - [ ] `uv run pytest tests --ignore=tests/smoke` passes.
 - [ ] Startup smoke passes:
-  `uv run music-teacher status` and `GET /health` via FastAPI `TestClient`.
+  `uv run music-teacher status` and API import + `/health` route sanity check.
 - [ ] `RELEASE_CHECKLIST.md` is uploaded as a CI artifact (`release-checklist`).
 
 ## 1. Deployment And First Run

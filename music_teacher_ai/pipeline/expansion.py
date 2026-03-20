@@ -28,7 +28,7 @@ from typing import Optional
 from sqlmodel import select
 
 from music_teacher_ai.database.models import BackgroundJob, SongCandidate
-from music_teacher_ai.database.repositories import SongRepository, SongCandidateRepository, song_key
+from music_teacher_ai.database.repositories import SongCandidateRepository, SongRepository, song_key
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.fetchers import CandidateSong, fetch_candidates_for_expansion
 

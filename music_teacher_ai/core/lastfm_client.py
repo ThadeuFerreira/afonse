@@ -8,7 +8,7 @@ Used as a supplement to MusicBrainz when Spotify is unavailable.
 """
 from typing import Optional
 
-from music_teacher_ai.config.settings import LASTFM_API_KEY, LASTFM_USER_AGENT
+from music_teacher_ai.config.settings import LASTFM_API_KEY
 from music_teacher_ai.core.api_cache import cached_api
 
 
@@ -47,7 +47,6 @@ def get_tags(title: str, artist: str, limit: int = 5) -> list[str]:
 @cached_api("lastfm")
 def _fetch_play_count(title: str, artist: str) -> Optional[int]:
     """Inner call — raises on error so the cache is not written on failure."""
-    import pylast
     network = _get_network()
     track = network.get_track(artist, title)
     return int(track.get_playcount())

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from typing import Optional
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 
 _MAX_PLAYLIST_SIZE = 100
 _DEFAULT_PLAYLIST_SIZE = 20

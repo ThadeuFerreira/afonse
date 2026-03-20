@@ -11,8 +11,6 @@ Or via the CLI:
     music-teacher doctor
 """
 import os
-import tempfile
-from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
@@ -57,6 +55,7 @@ def tmp_db(tmp_path, monkeypatch):
 
     # Re-import settings so the patched env var is picked up
     import importlib
+
     import music_teacher_ai.config.settings as settings_mod
     import music_teacher_ai.database.sqlite as sqlite_mod
 
@@ -76,6 +75,7 @@ def tmp_faiss(tmp_path, monkeypatch):
     monkeypatch.setenv("FAISS_INDEX_PATH", str(index_file))
 
     import importlib
+
     import music_teacher_ai.config.settings as settings_mod
     importlib.reload(settings_mod)
 

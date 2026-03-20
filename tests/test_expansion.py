@@ -5,23 +5,18 @@ All tests use an in-memory/tmp database and mock external API calls so they
 never hit real network endpoints.
 """
 import threading
-from unittest.mock import patch
 
 import pytest
 from sqlmodel import select
 
+from music_teacher_ai.pipeline.enrichment import CandidateSong
 from music_teacher_ai.pipeline.expansion import (
-    EXPANSION_THRESHOLD,
-    _MAX_CANDIDATES,
     _active_jobs,
     _jobs_lock,
     build_query_origin,
     process_candidates,
     trigger_expansion,
-    _stage_candidates,
 )
-from music_teacher_ai.pipeline.enrichment import CandidateSong
-
 
 # ---------------------------------------------------------------------------
 # DB fixture — same pattern as test_enrichment.py
@@ -29,7 +24,6 @@ from music_teacher_ai.pipeline.enrichment import CandidateSong
 
 def _make_db(tmp_path, monkeypatch):
     """Point the whole stack at a fresh SQLite database in tmp_path."""
-    import importlib
     from music_teacher_ai.config import settings as cfg_settings
 
     db_path = tmp_path / "test.db"
@@ -38,7 +32,6 @@ def _make_db(tmp_path, monkeypatch):
     import music_teacher_ai.database.sqlite as db_mod
     monkeypatch.setattr(db_mod, "DATABASE_PATH", db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    import sqlalchemy
     from sqlmodel import SQLModel, create_engine
     test_engine = create_engine(f"sqlite:///{db_path}", echo=False)
     monkeypatch.setattr(db_mod, "engine", test_engine)
@@ -90,8 +83,8 @@ def test_query_origin_empty():
 
 def test_stage_candidates_writes_pending(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
-    from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.database.models import SongCandidate
+    from music_teacher_ai.database.sqlite import get_session
 
     candidates = [
         CandidateSong(title="Song A", artist="Artist 1", year=2010),
@@ -112,8 +105,8 @@ def test_stage_candidates_writes_pending(tmp_path, monkeypatch):
 
 def test_stage_candidates_preserves_year(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
-    from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.database.models import SongCandidate
+    from music_teacher_ai.database.sqlite import get_session
 
     exp._stage_candidates([CandidateSong("T", "A", year=1999)], "year:1999", "musicbrainz")
     with get_session() as session:
@@ -127,8 +120,8 @@ def test_stage_candidates_preserves_year(tmp_path, monkeypatch):
 
 def test_process_candidates_inserts_new_song(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
+    from music_teacher_ai.database.models import Song
     from music_teacher_ai.database.sqlite import get_session
-    from music_teacher_ai.database.models import Song, SongCandidate
 
     exp._stage_candidates([CandidateSong("New Song", "New Artist")], "genre:pop", "lastfm")
     result = exp.process_candidates()
@@ -144,8 +137,8 @@ def test_process_candidates_inserts_new_song(tmp_path, monkeypatch):
 
 def test_process_candidates_rejects_existing_song(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
+    from music_teacher_ai.database.models import Artist, Song
     from music_teacher_ai.database.sqlite import get_session
-    from music_teacher_ai.database.models import Artist, Song, SongCandidate
 
     # Pre-populate the main DB with the same song
     with get_session() as session:
@@ -170,8 +163,8 @@ def test_process_candidates_returns_zero_when_no_pending(tmp_path, monkeypatch):
 
 def test_process_candidates_filters_by_query_origin(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
-    from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.database.models import Song
+    from music_teacher_ai.database.sqlite import get_session
 
     exp._stage_candidates([CandidateSong("Song X", "Artist X")], "genre:rock", "lastfm")
     exp._stage_candidates([CandidateSong("Song Y", "Artist Y")], "genre:jazz", "lastfm")
@@ -189,8 +182,8 @@ def test_process_candidates_filters_by_query_origin(tmp_path, monkeypatch):
 
 def test_process_candidates_marks_status_correctly(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
-    from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.database.models import Artist, Song, SongCandidate
+    from music_teacher_ai.database.sqlite import get_session
 
     with get_session() as session:
         a = Artist(name="Existing Artist")
@@ -272,9 +265,10 @@ def test_trigger_expansion_deduplicates_active_jobs(tmp_path, monkeypatch):
 @pytest.fixture
 def rest_client(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
+    from sqlmodel import SQLModel, create_engine
+
     import music_teacher_ai.database.sqlite as db_mod
     from music_teacher_ai.config import settings as cfg_settings
-    from sqlmodel import SQLModel, create_engine
 
     db_path = tmp_path / "rest_test.db"
     monkeypatch.setattr(cfg_settings, "DATABASE_PATH", db_path)
@@ -335,9 +329,10 @@ def test_search_no_expansion_for_word_only(rest_client, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_mcp_search_songs_returns_new_format(tmp_path, monkeypatch):
+    from sqlmodel import SQLModel, create_engine
+
     import music_teacher_ai.database.sqlite as db_mod
     from music_teacher_ai.config import settings as cfg_settings
-    from sqlmodel import SQLModel, create_engine
 
     db_path = tmp_path / "mcp_test.db"
     monkeypatch.setattr(cfg_settings, "DATABASE_PATH", db_path)
@@ -360,9 +355,10 @@ def test_mcp_process_candidates_tool_in_tools_list():
 
 
 def test_mcp_process_candidates_dispatch(tmp_path, monkeypatch):
+    from sqlmodel import SQLModel, create_engine
+
     import music_teacher_ai.database.sqlite as db_mod
     from music_teacher_ai.config import settings as cfg_settings
-    from sqlmodel import SQLModel, create_engine
 
     db_path = tmp_path / "mcp_proc.db"
     monkeypatch.setattr(cfg_settings, "DATABASE_PATH", db_path)
@@ -378,9 +374,10 @@ def test_mcp_process_candidates_dispatch(tmp_path, monkeypatch):
 
 
 def test_mcp_process_candidates_with_query_origin(tmp_path, monkeypatch):
+    from sqlmodel import SQLModel, create_engine
+
     import music_teacher_ai.database.sqlite as db_mod
     from music_teacher_ai.config import settings as cfg_settings
-    from sqlmodel import SQLModel, create_engine
 
     db_path = tmp_path / "mcp_proc2.db"
     monkeypatch.setattr(cfg_settings, "DATABASE_PATH", db_path)

@@ -12,6 +12,7 @@ active Premium subscription. Tests that hit the API will be skipped with a clear
 message if a 403 is returned, rather than failing.
 """
 import pytest
+
 from tests.smoke.conftest import requires_spotify
 
 
@@ -25,8 +26,9 @@ def _skip_if_premium_required(exc):
 @requires_spotify
 def test_spotify_authentication():
     """Client can authenticate with the provided credentials."""
-    from music_teacher_ai.core.spotify_client import get_client
     from spotipy.exceptions import SpotifyException
+
+    from music_teacher_ai.core.spotify_client import get_client
 
     sp = get_client()
     try:
@@ -45,7 +47,7 @@ def test_spotify_authentication():
 @requires_spotify
 def test_spotify_search_known_track():
     """search_track() returns metadata for a well-known song."""
-    from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
+    from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError, search_track
 
     try:
         meta = search_track("Imagine", "John Lennon")
@@ -63,7 +65,7 @@ def test_spotify_search_known_track():
 @requires_spotify
 def test_spotify_audio_features():
     """Audio features (tempo, energy, valence, danceability) are populated."""
-    from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
+    from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError, search_track
 
     try:
         meta = search_track("Imagine", "John Lennon")
@@ -83,7 +85,7 @@ def test_spotify_audio_features():
 @requires_spotify
 def test_spotify_artist_genres():
     """Artist genres list is returned (may be empty for some artists, but not missing)."""
-    from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
+    from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError, search_track
 
     try:
         meta = search_track("Imagine", "John Lennon")
@@ -97,7 +99,7 @@ def test_spotify_artist_genres():
 @requires_spotify
 def test_spotify_no_result_returns_none():
     """search_track returns None for a clearly non-existent song."""
-    from music_teacher_ai.core.spotify_client import search_track, SpotifyPremiumRequiredError
+    from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError, search_track
 
     try:
         meta = search_track(

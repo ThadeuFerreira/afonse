@@ -13,12 +13,12 @@ Verifies:
 - Index can be saved and reloaded from disk
 """
 import numpy as np
-import pytest
 
 
 def test_model_loads():
     """SentenceTransformer model loads without error."""
     from sentence_transformers import SentenceTransformer
+
     from music_teacher_ai.config.settings import EMBEDDING_MODEL
 
     model = SentenceTransformer(EMBEDDING_MODEL)
@@ -28,7 +28,8 @@ def test_model_loads():
 def test_embedding_shape():
     """A single text produces a vector of the expected dimensionality."""
     from sentence_transformers import SentenceTransformer
-    from music_teacher_ai.config.settings import EMBEDDING_MODEL, EMBEDDING_DIM
+
+    from music_teacher_ai.config.settings import EMBEDDING_DIM, EMBEDDING_MODEL
 
     model = SentenceTransformer(EMBEDDING_MODEL)
     vec = model.encode(["Imagine there's no heaven"], normalize_embeddings=True)
@@ -39,6 +40,7 @@ def test_embedding_shape():
 def test_embedding_normalized():
     """Normalized embeddings have L2 norm ≈ 1.0."""
     from sentence_transformers import SentenceTransformer
+
     from music_teacher_ai.config.settings import EMBEDDING_MODEL
 
     model = SentenceTransformer(EMBEDDING_MODEL)
@@ -54,6 +56,7 @@ def test_semantic_similarity_ordering():
     a semantically dissimilar pair.
     """
     from sentence_transformers import SentenceTransformer
+
     from music_teacher_ai.config.settings import EMBEDDING_MODEL
 
     model = SentenceTransformer(EMBEDDING_MODEL)
@@ -78,6 +81,7 @@ def test_semantic_similarity_ordering():
 def test_faiss_index_add_and_search():
     """FAISS index correctly returns nearest neighbor."""
     import faiss
+
     from music_teacher_ai.config.settings import EMBEDDING_DIM
 
     index = faiss.IndexFlatIP(EMBEDDING_DIM)
@@ -101,6 +105,7 @@ def test_faiss_index_add_and_search():
 def test_faiss_index_save_and_reload(tmp_path):
     """Index can be written to disk and reloaded with identical results."""
     import faiss
+
     from music_teacher_ai.config.settings import EMBEDDING_DIM
 
     index_path = str(tmp_path / "test.index")

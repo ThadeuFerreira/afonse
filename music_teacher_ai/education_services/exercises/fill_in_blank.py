@@ -8,7 +8,7 @@ never blanked so the resulting exercise remains grammatically coherent.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Word lists

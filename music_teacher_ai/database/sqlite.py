@@ -1,9 +1,9 @@
 import sqlalchemy
-from sqlmodel import SQLModel, Session, create_engine
-from music_teacher_ai.config.settings import DATABASE_PATH
+from sqlmodel import Session, SQLModel, create_engine
 
 # Import models so SQLModel.metadata is populated before any DB operation.
 import music_teacher_ai.database.models  # noqa: F401, E402
+from music_teacher_ai.config.settings import DATABASE_PATH
 
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 engine = create_engine(f"sqlite:///{DATABASE_PATH}", echo=False)

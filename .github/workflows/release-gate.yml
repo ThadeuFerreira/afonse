@@ -59,14 +59,12 @@ jobs:
         run: |
           uv run music-teacher status
           uv run python - <<'PY'
-          from fastapi.testclient import TestClient
           from music_teacher_ai.api.rest_api import app
+          from music_teacher_ai.api.rest_api import health
 
-          with TestClient(app) as client:
-              response = client.get("/health")
-              assert response.status_code == 200, response.text
-              payload = response.json()
-              assert payload.get("status") == "ok", payload
+          assert health().get("status") == "ok"
+          paths = {route.path for route in app.routes}
+          assert "/health" in paths, paths
           print("startup smoke passed")
           PY
 

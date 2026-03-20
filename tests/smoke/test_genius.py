@@ -7,7 +7,6 @@ Verifies:
 - Word count is non-trivial (real lyrics, not empty/stub)
 - fetch_lyrics returns None gracefully for unknown songs
 """
-import pytest
 from tests.smoke.conftest import requires_genius
 
 
@@ -37,8 +36,9 @@ def test_genius_normalization_removes_headers():
 @requires_genius
 def test_genius_word_count():
     """Fetched lyrics contain a reasonable number of words."""
-    from music_teacher_ai.core.lyrics_client import fetch_lyrics
     import re
+
+    from music_teacher_ai.core.lyrics_client import fetch_lyrics
 
     lyrics = fetch_lyrics("Imagine", "John Lennon")
     assert lyrics is not None

@@ -46,7 +46,8 @@ from typing import Optional
 
 from music_teacher_ai.database.repositories import SongRepository, normalize_text, song_key
 from music_teacher_ai.database.sqlite import get_session
-from music_teacher_ai.pipeline.fetchers import REQUEST_DELAY, build_variants as build_fetch_variants
+from music_teacher_ai.pipeline.fetchers import REQUEST_DELAY
+from music_teacher_ai.pipeline.fetchers import build_variants as build_fetch_variants
 from music_teacher_ai.pipeline.observers import PipelineObserver, RichObserver
 from music_teacher_ai.pipeline.reporter import PipelineReport
 from music_teacher_ai.pipeline.types import CandidateSong, EnrichmentResult, Variant

@@ -4,8 +4,9 @@ Smoke tests for the MusicBrainz client.
 No API credentials required.
 MusicBrainz enforces 1 req/s — tests use a single well-known song.
 """
-import pytest
 from datetime import date
+
+import pytest
 
 
 def _clear_musicbrainz_cache(function_name: str, *args, **kwargs) -> None:

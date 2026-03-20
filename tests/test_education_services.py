@@ -329,10 +329,10 @@ class TestEducationREST:
     @pytest.fixture
     def client(self, tmp_path, monkeypatch):
         """FastAPI test client with a pre-populated in-memory DB."""
-        import os
         monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
 
         import importlib
+
         import music_teacher_ai.config.settings as _s
         import music_teacher_ai.database.sqlite as _db
 
@@ -357,6 +357,7 @@ class TestEducationREST:
             self._song_id = song.id
 
         from fastapi.testclient import TestClient
+
         import music_teacher_ai.api.rest_api as _api
         importlib.reload(_api)
         return TestClient(_api.app)
@@ -419,10 +420,10 @@ class TestEducationREST:
 class TestEducationMCP:
     @pytest.fixture(autouse=True)
     def setup_db(self, tmp_path, monkeypatch):
-        import os
         monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
 
         import importlib
+
         import music_teacher_ai.config.settings as _s
         import music_teacher_ai.database.sqlite as _db
 
@@ -447,6 +448,7 @@ class TestEducationMCP:
 
     def _dispatch(self, tool: str, inputs: dict):
         import importlib
+
         import music_teacher_ai.api.mcp_server as _mcp
         importlib.reload(_mcp)
         return _mcp.dispatch(tool, inputs)

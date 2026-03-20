@@ -30,7 +30,7 @@ from rich.progress import (
 from sqlmodel import select
 
 from music_teacher_ai.core.spotify_client import TrackMetadata
-from music_teacher_ai.database.models import Artist, Song, Album, IngestionFailure
+from music_teacher_ai.database.models import Album, Artist, IngestionFailure, Song
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.reporter import PipelineReport
 

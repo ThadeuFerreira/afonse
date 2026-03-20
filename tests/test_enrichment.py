@@ -4,21 +4,20 @@ Unit tests for the database enrichment pipeline.
 All tests mock at the _build_variants level or at the DB level so they
 never touch real external APIs.
 """
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from music_teacher_ai.pipeline.enrichment import (
+    _GLOBAL_DUP_STOP,
+    _MIN_VARIANT_TRIES,
     CandidateSong,
     EnrichmentResult,
     Variant,
     _normalize,
     _song_key,
-    _DUP_THRESHOLD,
-    _MIN_VARIANT_TRIES,
-    _GLOBAL_DUP_STOP,
 )
 from music_teacher_ai.pipeline.observers import NullObserver
-
 
 # ---------------------------------------------------------------------------
 # Normalisation helpers
@@ -114,6 +113,7 @@ def _setup_db(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("REPORTS_DIR", str(tmp_path / "reports"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.database.sqlite as db
     import music_teacher_ai.pipeline.reporter as rep
@@ -146,10 +146,11 @@ def test_load_existing_keys_returns_normalized(tmp_path, monkeypatch):
 
 def test_insert_candidates_inserts_new(tmp_path, monkeypatch):
     _setup_db(tmp_path, monkeypatch)
-    from music_teacher_ai.pipeline.enrichment import _insert_candidates
+    from sqlmodel import select
+
     from music_teacher_ai.database.models import Song
     from music_teacher_ai.database.sqlite import get_session
-    from sqlmodel import select
+    from music_teacher_ai.pipeline.enrichment import _insert_candidates
 
     inserted, skipped = _insert_candidates(
         [CandidateSong("Bohemian Rhapsody", "Queen"),
@@ -373,7 +374,6 @@ def test_enrich_skips_duplicates(tmp_path, monkeypatch):
 
 def test_enrich_raises_without_criteria(tmp_path, monkeypatch):
     enr = _make_db(tmp_path, monkeypatch)
-    import pytest
     with pytest.raises(ValueError, match="at least one"):
         enr.enrich_database(run_pipeline=False)
 
@@ -462,6 +462,7 @@ def test_rest_enrich_valid():
 
 def test_rest_enrich_no_criteria():
     from fastapi.testclient import TestClient
+
     from music_teacher_ai.api.rest_api import app
     resp = TestClient(app).post("/enrich", json={"limit": 100})
     assert resp.status_code == 422

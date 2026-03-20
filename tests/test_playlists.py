@@ -3,12 +3,11 @@ Unit tests for playlist creation, export, and management.
 No database or external API required.
 """
 import json
+
 import pytest
-from pathlib import Path
 
-from music_teacher_ai.playlists.models import Playlist, PlaylistSong, PlaylistQuery
-from music_teacher_ai.playlists.exporters import to_m3u, to_json, render, SUPPORTED_FORMATS
-
+from music_teacher_ai.playlists.exporters import render, to_json, to_m3u
+from music_teacher_ai.playlists.models import Playlist, PlaylistQuery, PlaylistSong
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -129,6 +128,7 @@ def test_render_invalid_format(sample_playlist):
 def test_create_and_get_playlist(tmp_path, monkeypatch):
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     importlib.reload(s)
@@ -150,6 +150,7 @@ def test_create_and_get_playlist(tmp_path, monkeypatch):
 def test_export_files_written(tmp_path, monkeypatch):
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     importlib.reload(s)
@@ -167,6 +168,7 @@ def test_export_files_written(tmp_path, monkeypatch):
 def test_create_duplicate_raises(tmp_path, monkeypatch):
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     importlib.reload(s)
@@ -182,6 +184,7 @@ def test_create_duplicate_raises(tmp_path, monkeypatch):
 def test_delete_playlist(tmp_path, monkeypatch):
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     importlib.reload(s)
@@ -198,6 +201,7 @@ def test_delete_playlist(tmp_path, monkeypatch):
 def test_list_playlists(tmp_path, monkeypatch):
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     importlib.reload(s)
@@ -255,6 +259,7 @@ def test_song_count_empty():
 def test_query_origin_stored_on_create(tmp_path, monkeypatch):
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     importlib.reload(s)
@@ -290,6 +295,7 @@ def test_playlist_size_cap(tmp_path, monkeypatch):
     """Creating a playlist with 150 songs must silently cap at 100."""
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.playlists.manager as pm
     from music_teacher_ai.playlists.models import _MAX_PLAYLIST_SIZE
@@ -329,6 +335,7 @@ def test_search_by_title_matches_title(tmp_path, monkeypatch):
     """_search_by_title must match Song.title, not lyrics vocabulary."""
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     import importlib
+
     import music_teacher_ai.config.settings as _s
     import music_teacher_ai.database.sqlite as _db
     importlib.reload(_s)
@@ -348,7 +355,6 @@ def test_search_by_title_matches_title(tmp_path, monkeypatch):
 
     from music_teacher_ai.playlists.manager import _search_by_title
     importlib.reload(__import__("music_teacher_ai.playlists.manager", fromlist=["_search_by_title"]))
-    from music_teacher_ai.playlists.manager import _search_by_title
 
     results = _search_by_title("Dream On", limit=10)
     assert len(results) == 1
@@ -358,6 +364,7 @@ def test_search_by_title_matches_title(tmp_path, monkeypatch):
 def test_search_by_title_case_insensitive(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     import importlib
+
     import music_teacher_ai.config.settings as _s
     import music_teacher_ai.database.sqlite as _db
     importlib.reload(_s)
@@ -382,6 +389,7 @@ def test_search_by_title_case_insensitive(tmp_path, monkeypatch):
 def test_search_by_title_partial_match(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     import importlib
+
     import music_teacher_ai.config.settings as _s
     import music_teacher_ai.database.sqlite as _db
     importlib.reload(_s)
@@ -413,6 +421,7 @@ def test_run_query_song_uses_title_not_vocabulary(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("PLAYLISTS_DIR", str(tmp_path / "playlists"))
     import importlib
+
     import music_teacher_ai.config.settings as _s
     import music_teacher_ai.database.sqlite as _db
     importlib.reload(_s)

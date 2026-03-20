@@ -70,7 +70,7 @@ def test_insert_song_with_artist(session):
 
 
 def test_insert_lyrics(session):
-    from music_teacher_ai.database.models import Artist, Song, Lyrics
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
 
     artist = Artist(name="Marvin Gaye")
     session.add(artist)
@@ -95,7 +95,7 @@ def test_insert_lyrics(session):
 
 
 def test_vocabulary_index(session):
-    from music_teacher_ai.database.models import Artist, Song, Lyrics, VocabularyIndex
+    from music_teacher_ai.database.models import Artist, Song, VocabularyIndex
 
     artist = Artist(name="Test Artist")
     session.add(artist)
@@ -138,6 +138,7 @@ def test_spotify_id_unique_constraint(session):
     """Two songs with the same spotify_id should raise an integrity error."""
     import pytest
     from sqlalchemy.exc import IntegrityError
+
     from music_teacher_ai.database.models import Artist, Song
 
     artist = Artist(name="Artist X")

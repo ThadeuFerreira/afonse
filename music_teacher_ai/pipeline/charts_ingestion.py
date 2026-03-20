@@ -11,10 +11,10 @@ from rich.progress import (
 )
 from sqlmodel import select
 
-from music_teacher_ai.core.billboard_client import fetch_all_years_parallel, ChartEntry
-from music_teacher_ai.database.models import Artist, Song, Chart, IngestionFailure
-from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.config.settings import BILLBOARD_START_YEAR
+from music_teacher_ai.core.billboard_client import ChartEntry, fetch_all_years_parallel
+from music_teacher_ai.database.models import Artist, Chart, IngestionFailure, Song
+from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.reporter import PipelineReport
 
 console = Console()

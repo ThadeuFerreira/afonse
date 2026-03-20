@@ -2,9 +2,7 @@
 Unit tests for music_teacher_ai/pipeline/lyrics_downloader.py.
 No database or real Genius API required.
 """
-import pytest
 from unittest.mock import patch
-
 
 # ---------------------------------------------------------------------------
 # _is_rate_limit()

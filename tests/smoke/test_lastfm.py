@@ -5,6 +5,7 @@ Requires LASTFM_API_KEY in .env.
 Free key at https://www.last.fm/api/account/create
 """
 import os
+
 import pytest
 
 
@@ -111,6 +112,7 @@ def test_lastfm_get_tags_returns_empty_when_not_configured(monkeypatch):
     _clear_lastfm_cache("_fetch_tags", "Imagine", "John Lennon", 5)
     monkeypatch.setenv("LASTFM_API_KEY", "")
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.core.lastfm_client as lfm
     importlib.reload(s)
@@ -123,6 +125,7 @@ def test_lastfm_get_tags_returns_empty_when_not_configured(monkeypatch):
 def test_lastfm_is_configured(monkeypatch):
     """is_configured reflects whether LASTFM_API_KEY is set."""
     import importlib
+
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.core.lastfm_client as lfm
 

@@ -1,7 +1,8 @@
 from typing import Optional
+
 from sqlmodel import select
 
-from music_teacher_ai.database.models import Song, Artist, VocabularyIndex
+from music_teacher_ai.database.models import Artist, Song, VocabularyIndex
 from music_teacher_ai.database.sqlite import get_session
 
 

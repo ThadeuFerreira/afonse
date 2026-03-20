@@ -11,16 +11,14 @@ Verifies:
 - keyword_search finds songs by indexed word
 """
 import numpy as np
-import pytest
 from sqlmodel import select
-
 
 # ---------------------------------------------------------------------------
 # Helpers to seed a minimal in-memory dataset
 # ---------------------------------------------------------------------------
 
 def _seed_song(session, title: str, artist_name: str, lyrics_text: str, year: int = 1990):
-    from music_teacher_ai.database.models import Artist, Song, Lyrics
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
 
     artist = session.exec(select(Artist).where(Artist.name == artist_name)).first()
     if not artist:
@@ -43,9 +41,9 @@ def _seed_song(session, title: str, artist_name: str, lyrics_text: str, year: in
 # ---------------------------------------------------------------------------
 
 def test_vocabulary_indexer_extracts_words(tmp_db):
+    from music_teacher_ai.database.models import VocabularyIndex
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
-    from music_teacher_ai.database.models import VocabularyIndex
 
     with get_session() as session:
         _seed_song(session, "Dream Song", "Artist A", "dreaming of freedom and hope tonight")
@@ -60,9 +58,9 @@ def test_vocabulary_indexer_extracts_words(tmp_db):
 
 
 def test_vocabulary_indexer_skips_stopwords(tmp_db):
+    from music_teacher_ai.database.models import VocabularyIndex
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
-    from music_teacher_ai.database.models import VocabularyIndex
 
     with get_session() as session:
         _seed_song(session, "Stopword Song", "Artist B", "i am the one who knocks")
@@ -80,9 +78,9 @@ def test_vocabulary_indexer_skips_stopwords(tmp_db):
 
 def test_vocabulary_indexer_no_duplicates(tmp_db):
     """Running the indexer twice must not create duplicate entries."""
+    from music_teacher_ai.database.models import VocabularyIndex
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
-    from music_teacher_ai.database.models import VocabularyIndex
 
     with get_session() as session:
         _seed_song(session, "Double Song", "Artist C", "love and peace forever")
@@ -102,9 +100,9 @@ def test_vocabulary_indexer_no_duplicates(tmp_db):
 # ---------------------------------------------------------------------------
 
 def test_embedding_pipeline_stores_faiss_id(tmp_db, tmp_faiss):
+    from music_teacher_ai.database.models import Embedding
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
-    from music_teacher_ai.database.models import Embedding
 
     with get_session() as session:
         _seed_song(session, "Embed Song", "Artist D", "the night is young and full of stars")
@@ -119,10 +117,10 @@ def test_embedding_pipeline_stores_faiss_id(tmp_db, tmp_faiss):
 
 
 def test_embedding_pipeline_vector_shape(tmp_db, tmp_faiss):
+    from music_teacher_ai.config.settings import EMBEDDING_DIM
+    from music_teacher_ai.database.models import Embedding
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
-    from music_teacher_ai.database.models import Embedding
-    from music_teacher_ai.config.settings import EMBEDDING_DIM
 
     with get_session() as session:
         _seed_song(session, "Shape Song", "Artist E", "walking down the road to find my way")
@@ -138,9 +136,9 @@ def test_embedding_pipeline_vector_shape(tmp_db, tmp_faiss):
 
 def test_embedding_pipeline_faiss_ids_sequential(tmp_db, tmp_faiss):
     """faiss_id values are sequential (0, 1, 2, ...) across batches."""
+    from music_teacher_ai.database.models import Embedding
     from music_teacher_ai.database.sqlite import get_session
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
-    from music_teacher_ai.database.models import Embedding
 
     with get_session() as session:
         for i in range(3):

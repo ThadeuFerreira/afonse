@@ -8,7 +8,6 @@ Verifies:
 - The chart contains the expected number of entries
 - Entry fields are populated (title, artist, rank)
 """
-import pytest
 
 
 def test_billboard_fetch_known_year():

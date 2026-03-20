@@ -1,12 +1,11 @@
-import numpy as np
 import faiss
-
+import numpy as np
 from rich.console import Console
 from sqlmodel import select
 
-from music_teacher_ai.database.models import Lyrics, Embedding
+from music_teacher_ai.config.settings import EMBEDDING_DIM, EMBEDDING_MODEL, FAISS_INDEX_PATH
+from music_teacher_ai.database.models import Embedding, Lyrics
 from music_teacher_ai.database.sqlite import get_session
-from music_teacher_ai.config.settings import FAISS_INDEX_PATH, EMBEDDING_MODEL, EMBEDDING_DIM
 from music_teacher_ai.pipeline.reporter import PipelineReport
 
 console = Console()
