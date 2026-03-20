@@ -74,30 +74,45 @@ music-teacher init
 This runs the bootstrap pipeline:
 
 1. Creates the database schema
-2. Seeds songs from `music_teacher_ai/ingestion/songs_seed.json`
-3. Downloads lyrics from Genius
+2. Seeds ~120 well-known songs from the built-in `songs_seed.json`
+3. Downloads lyrics from Genius for every seeded song
 4. Builds a vocabulary index (word → songs)
 5. Generates sentence embeddings for semantic search
 
-Estimated time: minutes for the default seed (depends on lyric API latency).
+No Billboard, Spotify, or MusicBrainz calls during init — only Genius is required.
+
+Estimated time: a few minutes for the default seed (depends on Genius API latency).
+
+> **First run without credentials?** The app auto-loads 10 demo songs with hardcoded lyrics so every command works immediately. Run `music-teacher config` to set your Genius token, then re-run `music-teacher init` to replace demo lyrics with real downloads.
 
 ---
 
 ## Commands
 
 ```bash
-music-teacher status                    # Show database stats
-music-teacher migrate-db                # Apply explicit DB migrations/indexes
-music-teacher search --word dream       # Find songs containing "dream"
+music-teacher init                             # Bootstrap from built-in seed
+music-teacher config                           # Set/update API credentials
+music-teacher config --show                    # Print current credential status
+music-teacher status                           # Show database stats
+music-teacher migrate-db                       # Apply explicit DB migrations/indexes
+music-teacher search --word dream              # Find songs containing "dream"
 music-teacher search --query "songs about freedom"  # Semantic search
 music-teacher search --word love --year-min 1970 --year-max 1980
-music-teacher update "Nina Simone"      # Expand catalog by artist
-music-teacher inspect songs             # Validate suspicious/corrupt song data
-music-teacher inspect songs --fix       # Delete invalid rows automatically
-music-teacher repair song 262           # Re-fetch metadata + lyrics for one song
-music-teacher retry-failed              # Retry failed ingestion steps
-music-teacher rebuild-embeddings        # Rebuild FAISS index
+music-teacher update "Nina Simone"             # Add an artist and download their lyrics
+music-teacher inspect songs                    # Validate suspicious/corrupt song data
+music-teacher inspect songs --fix              # Delete invalid rows automatically
+music-teacher repair song 262                  # Re-fetch metadata + lyrics for one song
+music-teacher retry-failed                     # Retry failed ingestion steps
+music-teacher rebuild-embeddings               # Rebuild FAISS index
 ```
+
+### `update` command
+
+```bash
+music-teacher update "<artist>"
+```
+
+Adds an artist's songs using the Last.fm / MusicBrainz discovery pipeline, then downloads lyrics and refreshes the vocabulary index and embeddings. Runs synchronously (blocks until complete).
 
 ### Troubleshooting: `music-teacher` command not found
 
@@ -117,11 +132,27 @@ uv run music-teacher status
 
 ---
 
+## Web Interface
+
+A mobile-first web UI is served automatically when the REST server is running:
+
+```
+http://localhost:8000/web
+```
+
+Pages: **Home** (search bar + recent searches), **Search** (title/artist), **Lyrics** (full text + exercise/playlist buttons), **Playlist** (cart-based, save or export M3U), **Exercise** (gap-fill, difficulty 10–40%, download .txt).
+
+No external JS frameworks — plain HTML/CSS/JS with native `fetch`.
+
+---
+
 ## REST API
 
 Start the server:
 
 ```bash
+music-teacher serve
+# or directly:
 uvicorn music_teacher_ai.api.rest_api:app --reload
 ```
 
@@ -131,14 +162,18 @@ Key endpoints:
 GET  /search?word=dream&year=1995
      -> {"results":[...], "database_expansion_triggered":bool}
 GET  /search/simple?q=adele&limit=50
-     -> local title/artist search used by the web UI
+     -> fast local title/artist ILIKE search (used by the web UI)
 POST /query   {"query": "songs about hope"}
 GET  /songs/{id}
 GET  /lyrics/{id}
-GET  /education/exercise/{id}
+GET  /education/exercise/{id}?num_blanks=10
+     -> numbered fill-in-the-blank exercise (_(1)_ format)
 GET  /education/vocabulary/{id}
 GET  /education/phrasal-verbs/{id}
 POST /education/lesson
+POST /exercise/gap
+     -> {"song_id":1,"mode":"random","level":20}
+     -> returns text_with_gaps, answer_key, blanked_count, total_words + saved file
 GET  /config
 POST /config
 ```
