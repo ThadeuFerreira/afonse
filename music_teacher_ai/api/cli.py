@@ -61,7 +61,11 @@ def init():
 
     console.print("[bold green]Step 1/4 – Seeding songs...[/bold green]")
     result = seed_songs()
-    console.print(f"  inserted={result['inserted']} skipped={result['skipped']}")
+    console.print(
+        f"  inserted={result['inserted']} "
+        f"upgraded={result['upgraded']} "
+        f"skipped={result['skipped']}"
+    )
 
     console.print("[bold green]Step 2/4 – Downloading lyrics...[/bold green]")
     download_lyrics()
@@ -104,6 +108,10 @@ def status():
 @app.command()
 def update(
     artist: str = typer.Argument(..., help="Artist name to add to the knowledge base."),
+    genre: Optional[str] = typer.Option(None, "--genre", help="Genre to search for."),
+    year: Optional[int] = typer.Option(None, "--year", help="Year to search for."),
+    word: Optional[str] = typer.Option(None, "--word", help="Word to search for."),
+    limit: int = typer.Option(10, "--limit", help="Maximum number of songs to process."),
 ):
     """Add an artist's songs and download their lyrics."""
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
@@ -112,7 +120,7 @@ def update(
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
 
     console.print(f"[cyan]Discovering songs for artist: {artist!r}[/cyan]")
-    result = run_expansion_sync(artist=artist)
+    result = run_expansion_sync(artist=artist, genre=genre, year=year, word=word, limit=limit)
     console.print(
         f"[green]Discovery complete:[/green] "
         f"inserted={result['processed']} rejected={result['rejected']}"
@@ -196,6 +204,11 @@ def search(
     artist: Optional[str] = typer.Option(None),
     genre: Optional[str] = typer.Option(None),
     limit: int = typer.Option(20),
+    lyrics: bool = typer.Option(
+        False,
+        "--lyrics",
+        help="Include lyrics preview in results.",
+    ),
 ):
     """Search the knowledge base."""
     if query:
@@ -220,6 +233,30 @@ def search(
         if trigger_expansion(genre=genre, artist=artist, year=year, word=word):
             console.print("[dim]Triggering discovery job — future searches may return new songs.[/dim]")
         return
+
+    if lyrics:
+        song_ids: list[int] = []
+        for row in results:
+            song_id = row.get("song_id") or row.get("id")
+            if isinstance(song_id, int):
+                song_ids.append(song_id)
+
+        lyrics_by_song_id: dict[int, str] = {}
+        if song_ids:
+            with get_session() as session:
+                lyric_rows = session.exec(
+                    select(Lyrics).where(Lyrics.song_id.in_(song_ids))
+                ).all()
+            for lyr in lyric_rows:
+                # Keep table readable while still exposing lyrics from search.
+                text = (lyr.lyrics_text or "").strip().replace("\n", " ")
+                lyrics_by_song_id[lyr.song_id] = (
+                    text[:200] + ("..." if len(text) > 200 else "")
+                )
+
+        for row in results:
+            song_id = row.get("song_id") or row.get("id")
+            row["lyrics"] = lyrics_by_song_id.get(song_id, "")
 
     table = Table()
     for col in results[0].keys():
@@ -396,7 +433,11 @@ def exercise_lesson(
 
 @exercise_app.command("generate")
 def exercise_generate(
-    song: Optional[str] = typer.Option(None, "--song", help="Song title to search for."),
+    song: Optional[str] = typer.Option(
+        None,
+        "--song",
+        help="Song ID (numeric) or song title to search for.",
+    ),
     semantic: Optional[str] = typer.Option(None, "--semantic", help="Semantic query, e.g. 'songs about dreams'."),
     playlist: Optional[str] = typer.Option(None, "--playlist", help="Playlist slug — generates one section per song."),
     words: Optional[str] = typer.Option(None, "--words", help="Space-separated words to blank (manual mode), e.g. 'imagine world heaven'."),
@@ -486,23 +527,44 @@ def exercise_generate(
             _expand_and_exit(word=results[0]["title"] if results else None)
 
     else:  # --song
-        from sqlmodel import select
-
         from music_teacher_ai.database.models import Song as SongModel
+
         with get_session() as session:
-            songs = session.exec(
-                select(SongModel).where(SongModel.title.ilike(f"%{song}%")).limit(1)
-            ).all()
-            if not songs:
-                console.print(f"[yellow]No song found matching '{song}'.[/yellow]")
-                _expand_and_exit(word=song)
-            s = songs[0]
-            lyr = session.exec(select(Lyrics).where(Lyrics.song_id == s.id)).first()
-            if not lyr:
-                console.print(f"[yellow]Lyrics not yet downloaded for '{s.title}'.[/yellow]")
-                _expand_and_exit(word=s.title)
-            artist_obj = session.get(Artist, s.artist_id)
-            entries.append((lyr.lyrics_text, s.title, artist_obj.name if artist_obj else ""))
+            # If --song is numeric, treat it as exact song ID.
+            by_id = song.isdigit() if song else False
+            if by_id:
+                s = session.get(SongModel, int(song))
+                if not s:
+                    console.print(f"[yellow]Song ID {song} not found.[/yellow]")
+                    raise typer.Exit(1)
+                lyr = session.exec(select(Lyrics).where(Lyrics.song_id == s.id)).first()
+                if not lyr or not (lyr.lyrics_text or "").strip():
+                    console.print(f"[yellow]Lyrics not yet downloaded for song ID {song}.[/yellow]")
+                    raise typer.Exit(1)
+                artist_obj = session.get(Artist, s.artist_id)
+                entries.append((lyr.lyrics_text, s.title, artist_obj.name if artist_obj else ""))
+            else:
+                # Title search constrained to songs that actually have lyrics.
+                # Prefer locally-seeded/manual tracks first when multiple rows match.
+                rows = session.exec(
+                    select(SongModel, Lyrics, Artist)
+                    .join(Lyrics, Lyrics.song_id == SongModel.id)
+                    .join(Artist, Artist.id == SongModel.artist_id)
+                    .where(SongModel.title.ilike(f"%{song}%"))
+                    .where(Lyrics.lyrics_text != None)  # noqa: E711
+                    .order_by(
+                        SongModel.metadata_source.in_(["failed", "lyrics_only"]).desc(),
+                        SongModel.id.desc(),
+                    )
+                    .limit(1)
+                ).all()
+                if not rows:
+                    console.print(
+                        f"[yellow]No song with lyrics found matching title '{song}'.[/yellow]"
+                    )
+                    _expand_and_exit(word=song)
+                s, lyr, artist_obj = rows[0]
+                entries.append((lyr.lyrics_text, s.title, artist_obj.name if artist_obj else ""))
 
     # ---- build exercise text ----
     word_list = words.split() if words else []
@@ -888,6 +950,46 @@ def playlist_refresh(
     console.print(f"[green]Refreshed '{playlist_id}' — {len(playlist.songs)} songs.[/green]")
 
 
+def _maybe_upgrade_demo(env: dict, updates: dict) -> None:
+    """
+    If Genius is now configured and the DB contains demo songs, replace their
+    hardcoded lyrics with real ones downloaded from Genius.
+    """
+    import os
+
+    from sqlmodel import select
+
+    from music_teacher_ai.database.models import Song
+    from music_teacher_ai.database.sqlite import get_session
+
+    genius_key = updates.get("GENIUS_ACCESS_TOKEN") or env.get("GENIUS_ACCESS_TOKEN") or os.getenv("GENIUS_ACCESS_TOKEN")
+    if not genius_key:
+        return
+
+    try:
+        with get_session() as session:
+            demo_count = len(session.exec(
+                select(Song).where(Song.metadata_source == "demo")
+            ).all())
+    except Exception:
+        return
+
+    if not demo_count:
+        return
+
+    console.print(
+        f"\n[cyan]Genius credentials set — replacing hardcoded lyrics for "
+        f"{demo_count} demo song(s) with real downloads...[/cyan]"
+    )
+    from music_teacher_ai.ingestion.seed_ingestion import seed_songs
+    from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
+
+    result = seed_songs()
+    if result["upgraded"]:
+        console.print(f"  [green]Upgraded {result['upgraded']} demo song(s)[/green]")
+    download_lyrics()
+
+
 @app.command()
 def config(
     show: bool = typer.Option(False, "--show", help="Print current credential status and exit."),
@@ -961,6 +1063,9 @@ def config(
         console.print(f"[green]Saved {len(updates)} credential(s) to .env[/green]")
     else:
         console.print("[dim]No changes made.[/dim]")
+
+    # If Genius is now configured and demo songs are present, replace hardcoded lyrics
+    _maybe_upgrade_demo(env, updates)
 
     # Display admin token (first generation or reminder)
     console.print()

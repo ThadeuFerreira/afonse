@@ -144,8 +144,15 @@ function initSearch() {
       clearEl(results);
       const items = data.results || [];
       if (!items.length) {
+        if (data.database_expansion_triggered) {
+          results.append(alert('No songs found after live artist update.', 'info'));
+          return;
+        }
         results.append(alert('No songs found.', 'info'));
         return;
+      }
+      if (data.database_expansion_triggered) {
+        results.append(alert('New songs found after live artist update.', 'success'));
       }
       const ul = el('ul', { class: 'result-list' });
       items.forEach(s => ul.append(songCard(s)));
@@ -307,14 +314,26 @@ async function initExercise() {
         body: JSON.stringify({ song_id: +sid, mode: 'random', level }),
       });
       clearEl(output);
-      // Also fetch the actual exercise text from education endpoint
-      const ex = await api(`/education/exercise/${sid}?num_blanks=${Math.round(level / 5)}`);
-      output && (output.textContent = ex.text_with_blanks || data.file);
+
+      const text = data.text_with_gaps || '';
+      // Render as preformatted text to preserve line breaks
+      const pre = el('pre', {});
+      pre.textContent = text;
+      pre.style.cssText = 'white-space:pre-wrap;word-break:break-word;font-size:0.9rem;line-height:1.6;margin:0;';
+      output && output.append(pre);
+
+      // Answer key section
+      if (data.answer_key && data.answer_key.length) {
+        const keyDiv = el('div', {});
+        keyDiv.style.cssText = 'margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:0.8rem;color:var(--muted);';
+        keyDiv.textContent = `Answer key: ${data.answer_key.join(', ')}`;
+        output && output.append(keyDiv);
+      }
 
       if (dlBtn) {
         dlBtn.style.display = 'block';
         dlBtn.onclick = () => {
-          const blob = new Blob([ex.text_with_blanks || ''], { type: 'text/plain' });
+          const blob = new Blob([text], { type: 'text/plain' });
           const url  = URL.createObjectURL(blob);
           const a    = el('a', { href: url, download: `exercise-${sid}.txt` });
           document.body.append(a); a.click(); a.remove();

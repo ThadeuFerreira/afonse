@@ -47,7 +47,10 @@ def _require_admin(
     """FastAPI dependency: localhost-only + valid ADMIN_TOKEN Bearer token."""
     host = request.client.host if request.client else ""
     if host not in _LOCALHOST:
-        raise HTTPException(status_code=403, detail="Config endpoint only accessible from localhost")
+        raise HTTPException(
+            status_code=403,
+            detail="Config endpoint only accessible from localhost",
+        )
     from music_teacher_ai.config.credentials import verify_admin_token
     if not verify_admin_token(credentials.credentials):
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -143,7 +146,9 @@ def status():
             "songs": session.exec(select(func.count()).select_from(Song)).one(),
             "lyrics": session.exec(select(func.count()).select_from(Lyrics)).one(),
             "embeddings": session.exec(select(func.count()).select_from(Embedding)).one(),
-            "vocabulary_entries": session.exec(select(func.count()).select_from(VocabularyIndex)).one(),
+            "vocabulary_entries": session.exec(
+                select(func.count()).select_from(VocabularyIndex)
+            ).one(),
             "songs_with_artists": session.exec(
                 select(func.count())
                 .select_from(Song)
@@ -196,26 +201,48 @@ def simple_search(
     no embeddings, no metadata parsing.  Reliable even when other fields are
     corrupted.
     """
-    with get_session() as session:
-        songs = session.exec(
-            select(Song, Artist)
-            .join(Artist, Song.artist_id == Artist.id)
-            .where(
-                Song.title.ilike(f"%{q}%") | Artist.name.ilike(f"%{q}%")
-            )
-            .limit(limit)
-        ).all()
-        return {
-            "results": [
-                {
-                    "song_id": song.id,
-                    "title": song.title,
-                    "artist_name": artist.name,
-                    "year": song.release_year,
-                }
-                for song, artist in songs
-            ]
-        }
+    def _query_local() -> list[dict]:
+        with get_session() as session:
+            songs = session.exec(
+                select(Song, Artist)
+                .join(Artist, Song.artist_id == Artist.id)
+                .where(
+                    Song.title.ilike(f"%{q}%") | Artist.name.ilike(f"%{q}%")
+                )
+                .limit(limit)
+            ).all()
+        return [
+            {
+                "song_id": song.id,
+                "title": song.title,
+                "artist_name": artist.name,
+                "year": song.release_year,
+            }
+            for song, artist in songs
+        ]
+
+    results = _query_local()
+    expansion_triggered = False
+    expansion_result = {"processed": 0, "rejected": 0, "staged": 0}
+
+    # Live artist update: if nothing is found locally, try expanding by artist
+    # and then search again.
+    if not results:
+        from music_teacher_ai.pipeline.expansion import run_expansion_sync
+
+        expansion_result = run_expansion_sync(artist=q)
+        expansion_triggered = (
+            expansion_result.get("processed", 0) > 0
+            or expansion_result.get("staged", 0) > 0
+        )
+        if expansion_triggered:
+            results = _query_local()
+
+    return {
+        "results": results,
+        "database_expansion_triggered": expansion_triggered,
+        "expansion_result": expansion_result,
+    }
 
 
 @app.get("/search")
@@ -501,7 +528,18 @@ def exercise_gap(req: GapFillRequest):
             raise HTTPException(status_code=400, detail="Invalid output filename")
 
     out_path = export(ex, EXERCISES_DIR, safe_filename)
-    return {"file": out_path.name, "path": str(out_path)}
+    return {
+        "file": out_path.name,
+        "path": str(out_path),
+        "song_title": ex.song_title,
+        "artist": ex.artist,
+        "text_with_gaps": ex.text_with_gaps,
+        "answer_key": ex.answer_key,
+        "blanked_count": ex.blanked_count,
+        "total_words": ex.total_words,
+        "mode": ex.mode,
+        "level": ex.level,
+    }
 
 
 class LessonRequest(BaseModel):

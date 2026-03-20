@@ -85,6 +85,7 @@ def load_demo_songs() -> int:
                     title=entry["title"],
                     artist_id=artist_row.id,
                     release_year=entry.get("year"),
+                    metadata_source="demo",
                 )
                 session.add(song)
                 session.flush()

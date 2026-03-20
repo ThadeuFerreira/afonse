@@ -5,6 +5,9 @@ Upserts Artist and Song rows (matching by name / title+artist_id) so the
 function is safe to call multiple times.  All seeded songs are marked with
 metadata_source='lyrics_only' — they never go through Billboard / Spotify /
 MusicBrainz enrichment.
+
+Demo songs (metadata_source='demo') are upgraded to 'lyrics_only' and their
+hardcoded lyrics are deleted so download_lyrics() will fetch real ones.
 """
 from __future__ import annotations
 
@@ -13,7 +16,7 @@ from pathlib import Path
 
 from sqlmodel import select
 
-from music_teacher_ai.database.models import Artist, Song
+from music_teacher_ai.database.models import Artist, Lyrics, Song
 from music_teacher_ai.database.sqlite import get_session
 
 _SEED_FILE = Path(__file__).resolve().parent / "songs_seed.json"
@@ -22,10 +25,12 @@ _SEED_FILE = Path(__file__).resolve().parent / "songs_seed.json"
 def seed_songs() -> dict[str, int]:
     """Load songs_seed.json and upsert artists + songs into the database.
 
-    Returns {"inserted": N, "skipped": N}.
+    Demo songs are upgraded to real seed entries (hardcoded lyrics removed).
+
+    Returns {"inserted": N, "upgraded": N, "skipped": N}.
     """
     entries = json.loads(_SEED_FILE.read_text())
-    inserted = skipped = 0
+    inserted = upgraded = skipped = 0
 
     with get_session() as session:
         for entry in entries:
@@ -42,14 +47,28 @@ def seed_songs() -> dict[str, int]:
                 session.add(artist)
                 session.flush()  # populate artist.id
 
-            # Upsert song (skip if title+artist already exists)
             existing = session.exec(
                 select(Song)
                 .where(Song.title == title)
                 .where(Song.artist_id == artist.id)
             ).first()
+
             if existing:
-                skipped += 1
+                if existing.metadata_source == "demo":
+                    # Upgrade: replace hardcoded demo lyrics so real ones get fetched
+                    existing.metadata_source = "lyrics_only"
+                    if year and not existing.release_year:
+                        existing.release_year = year
+                    session.add(existing)
+                    # Remove hardcoded lyrics (word_count is None on demo lyrics)
+                    lyr = session.exec(
+                        select(Lyrics).where(Lyrics.song_id == existing.id)
+                    ).first()
+                    if lyr is not None and lyr.word_count is None:
+                        session.delete(lyr)
+                    upgraded += 1
+                else:
+                    skipped += 1
                 continue
 
             session.add(Song(
@@ -62,4 +81,4 @@ def seed_songs() -> dict[str, int]:
 
         session.commit()
 
-    return {"inserted": inserted, "skipped": skipped}
+    return {"inserted": inserted, "upgraded": upgraded, "skipped": skipped}
