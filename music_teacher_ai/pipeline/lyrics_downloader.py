@@ -72,21 +72,23 @@ def _fetch_one(title: str, artist: str) -> tuple[str, Optional[str]]:
 
 
 def download_lyrics(initial_workers: int = 5) -> None:
-    """Download lyrics for songs that don't have them yet."""
+    """Download lyrics for songs that don't have a Lyrics row yet."""
+    from music_teacher_ai.pipeline.validation import validate_lyrics
+
     report = PipelineReport("lyrics")
 
     with get_session() as session:
-        existing_ids = {
-            row for row in session.exec(select(Lyrics.song_id)).all()
-        }
-        songs = session.exec(select(Song)).all()
-        pending_songs = [s for s in songs if s.id not in existing_ids]
+        songs_with_lyrics = select(Lyrics.song_id)
+        songs = session.exec(
+            select(Song).where(~Song.id.in_(songs_with_lyrics))
+        ).all()
 
         artist_map: dict[int, str] = {}
-        for song in pending_songs:
+        for song in songs:
             artist = session.get(Artist, song.artist_id)
             artist_map[song.id] = artist.name if artist else ""
 
+    pending_songs = songs
     total = len(pending_songs)
     console.print(
         f"[cyan]Downloading lyrics for {total} songs "
@@ -169,7 +171,26 @@ def download_lyrics(initial_workers: int = 5) -> None:
             if ok_batch:
                 with get_session() as session:
                     for song, text in ok_batch:
+                        vr = validate_lyrics(text)
+                        if not vr.ok:
+                            # Hard failure — reject entirely
+                            fail_batch.append((song, f"Lyrics validation failed: {vr}"))
+                            report.add_error(
+                                song_id=song.id,
+                                title=song.title,
+                                artist=artist_map[song.id],
+                                error=str(vr),
+                            )
+                            continue
                         wc, uw = _count_words(text)
+                        if vr.warnings:
+                            # Soft warning — store but log
+                            report.add_event(
+                                "lyrics_warning",
+                                song_id=song.id,
+                                title=song.title,
+                                warnings="; ".join(vr.warnings),
+                            )
                         session.add(Lyrics(
                             song_id=song.id,
                             lyrics_text=text,
@@ -177,7 +198,10 @@ def download_lyrics(initial_workers: int = 5) -> None:
                             unique_words=uw,
                         ))
                     session.commit()
-                downloaded += len(ok_batch)
+                downloaded += sum(
+                    1 for song, _ in ok_batch
+                    if not any(song.id == fs.id for fs, _ in fail_batch)
+                )
 
             if fail_batch:
                 with get_session() as session:

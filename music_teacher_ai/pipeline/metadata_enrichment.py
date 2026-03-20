@@ -132,19 +132,29 @@ def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) ->
 # ---------------------------------------------------------------------------
 
 def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
-    """Enrich songs that have not yet been processed by any metadata source."""
+    """
+    Enrich songs that have not yet been processed by any metadata source AND
+    still need lyrics work (no lyrics yet, or existing lyrics are suspicious).
+
+    Songs that already have good metadata AND valid lyrics are skipped — they
+    are considered done and do not need to be re-fetched.
+    """
+    from music_teacher_ai.pipeline.validation import songs_needing_lyrics
+
     report = PipelineReport("metadata")
+
+    # Only consider songs that still need lyrics work
+    needs_work = songs_needing_lyrics()
+
     with get_session() as session:
+        base_q = (
+            select(Song)
+            .where(Song.metadata_source == None)  # noqa: E711
+            .where(Song.id.in_(needs_work))
+        )
         if init_quick:
-            songs = session.exec(
-                select(Song).where(Song.metadata_source == None)  # noqa: E711
-                .where(Song.release_year >= 2000)
-                .limit(10)
-            ).all()
-        else:
-            songs = session.exec(
-                select(Song).where(Song.metadata_source == None)  # noqa: E711
-            ).all()
+            base_q = base_q.where(Song.release_year >= 2000).limit(10)
+        songs = session.exec(base_q).all()
 
     total = len(songs)
     report.set("total", total)

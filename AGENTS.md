@@ -8,7 +8,7 @@ This document describes the project for AI agents (e.g. OpenClaw) interacting wi
 
 Music Teacher AI is a **local knowledge base of song lyrics and metadata** designed to help English teachers find songs suitable for language learning.
 
-It ingests data from Spotify, Billboard, and Genius into a local SQLite database, then exposes that data through a CLI, REST API, and MCP interface.
+It bootstraps from a built-in song seed, then can expand the catalog on demand (artist/genre/year) and enrich content from external providers (Spotify/MusicBrainz/Last.fm/Genius). It exposes that data through a CLI, REST API, and MCP interface.
 The API also includes education endpoints that transform lyrics into classroom-ready artifacts.
 
 ---
@@ -156,6 +156,7 @@ Key endpoints:
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/search/simple?q=adele&limit=50` | Plain local title/artist search (web UI default) |
 | GET | `/search?word=dream&year=1995` | Keyword search |
 | POST | `/query` | Semantic search (`{"query": "..."}`) |
 | GET | `/similar/song/{id}` | Similar songs by ID |
@@ -197,10 +198,19 @@ Key endpoints:
 
 ## Data Coverage
 
-- Billboard Hot 100 from 1960 to present
-- ~6500 songs
-- Metadata from Spotify (tempo, valence, energy, danceability, genres)
+- Seed-first local catalog from `music_teacher_ai/ingestion/songs_seed.json`
+- Expandable catalog via discovery pipelines (artist/genre/year)
+- Metadata from Spotify (priority), then MusicBrainz + Last.fm fallback
 - Lyrics from Genius
+
+---
+
+## CLI Notes (Current Behavior)
+
+- `music-teacher init` now initializes from the built-in seed and runs lyrics → vocabulary → embeddings.
+- `music-teacher update "<artist>"` runs synchronous expansion for an artist, then refreshes lyrics/index/embeddings.
+- `music-teacher inspect songs [--limit N] [--fix]` validates title/artist/lyrics and can delete invalid records.
+- `music-teacher repair song <id>` re-fetches metadata and lyrics for a specific record with validation safeguards.
 
 ---
 

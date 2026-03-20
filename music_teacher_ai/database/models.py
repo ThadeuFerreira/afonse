@@ -32,7 +32,7 @@ class Song(SQLModel, table=True):
     energy: Optional[float] = None
     danceability: Optional[float] = None
     isrc: Optional[str] = Field(default=None, index=True)  # International Standard Recording Code
-    metadata_source: Optional[str] = None  # "spotify" | "musicbrainz" | "lastfm" | None=not enriched
+    metadata_source: Optional[str] = None  # "spotify" | "musicbrainz" | "lyrics_only" | "failed" | None=not enriched
 
 
 class Lyrics(SQLModel, table=True):

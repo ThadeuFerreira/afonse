@@ -184,6 +184,40 @@ def get_lyrics(song_id: int):
         return lyr.dict()
 
 
+@app.get("/search/simple")
+def simple_search(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(50, le=100),
+):
+    """
+    Search songs by title or artist name only.
+
+    Uses a plain ILIKE query against local database fields — no external APIs,
+    no embeddings, no metadata parsing.  Reliable even when other fields are
+    corrupted.
+    """
+    with get_session() as session:
+        songs = session.exec(
+            select(Song, Artist)
+            .join(Artist, Song.artist_id == Artist.id)
+            .where(
+                Song.title.ilike(f"%{q}%") | Artist.name.ilike(f"%{q}%")
+            )
+            .limit(limit)
+        ).all()
+        return {
+            "results": [
+                {
+                    "song_id": song.id,
+                    "title": song.title,
+                    "artist_name": artist.name,
+                    "year": song.release_year,
+                }
+                for song, artist in songs
+            ]
+        }
+
+
 @app.get("/search")
 def keyword_search(
     word: Optional[str] = None,

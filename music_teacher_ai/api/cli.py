@@ -1,4 +1,3 @@
-from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -50,58 +49,27 @@ def migrate_db():
 
 
 @app.command()
-def init(
-    start: int = typer.Option(1960, help="First year to ingest from Billboard."),
-    end: int = typer.Option(None, help="Last year to ingest (default: current year)."),
-    workers: int = typer.Option(5, "--workers", "-w", help="Parallel workers for Billboard fetch. Raise carefully — aggressive values may trigger rate-limiting."),
-    quick: bool = typer.Option(False, "--quick", help="Quick start: top 10 songs/year since 2000 only (~25 years × 10 songs)."),
-):
-    """Initialize the knowledge base from scratch."""
-    from music_teacher_ai.pipeline.charts_ingestion import ingest_charts
+def init():
+    """Initialize the knowledge base from the built-in song seed."""
+    from music_teacher_ai.ingestion.seed_ingestion import seed_songs
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
     from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
-    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
-
-    chart_limit = 10 if quick else None
-    # Validate start and end years before computing the effective range.
-    if start is None or not isinstance(start, int):
-        start = date.today().year - 1
-    if end is None or not isinstance(end, int):
-        end = date.today().year - 1
-    if start > end:
-        start = date.today().year - 2
-        end = date.today().year - 1
-    if start < 1960:
-        start = 1960
-    if end < 1961:
-        end = 1961
-
-    # Apply quick-mode override after validation so the sanitized end is kept.
-    chart_start = 2000 if quick else start
-
-    if quick:
-        console.print(
-            "[bold yellow]Quick mode:[/bold yellow] fetching top 10 songs/year from 2000 to present. "
-            "Run without --quick for full history."
-        )
 
     console.print("[bold green]Creating database schema...[/bold green]")
     create_db()
 
-    console.print("[bold green]Step 1/5 – Fetching Billboard charts...[/bold green]")
-    ingest_charts(start=chart_start, end=end or date.today().year, workers=workers, limit=chart_limit)
+    console.print("[bold green]Step 1/4 – Seeding songs...[/bold green]")
+    result = seed_songs()
+    console.print(f"  inserted={result['inserted']} skipped={result['skipped']}")
 
-    console.print("[bold green]Step 2/5 – Enriching metadata...[/bold green]")
-    enrich_metadata(init_quick=quick)
-
-    console.print("[bold green]Step 3/5 – Downloading lyrics...[/bold green]")
+    console.print("[bold green]Step 2/4 – Downloading lyrics...[/bold green]")
     download_lyrics()
 
-    console.print("[bold green]Step 4/5 – Building vocabulary index...[/bold green]")
+    console.print("[bold green]Step 3/4 – Building vocabulary index...[/bold green]")
     build_vocabulary_index()
 
-    console.print("[bold green]Step 5/5 – Generating embeddings...[/bold green]")
+    console.print("[bold green]Step 4/4 – Generating embeddings...[/bold green]")
     generate_embeddings()
 
     console.print("[bold green]Initialization complete.[/bold green]")
@@ -135,99 +103,25 @@ def status():
 
 @app.command()
 def update(
-    genre: Optional[str] = typer.Option(None, help="Genre to fetch from Spotify."),
-    artist: Optional[str] = typer.Option(None, help="Artist discography to fetch."),
-    year: Optional[int] = typer.Option(None, help="Year to re-ingest from Billboard."),
+    artist: str = typer.Argument(..., help="Artist name to add to the knowledge base."),
 ):
-    """Incrementally update the knowledge base."""
+    """Add an artist's songs and download their lyrics."""
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
+    from music_teacher_ai.pipeline.expansion import run_expansion_sync
     from music_teacher_ai.pipeline.lyrics_downloader import download_lyrics
-    from music_teacher_ai.pipeline.metadata_enrichment import enrich_metadata
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
 
-    if year:
-        from music_teacher_ai.pipeline.charts_ingestion import ingest_charts
-        ingest_charts(start=year, end=year)
-    elif genre or artist:
-        console.print(f"[yellow]Fetching Spotify tracks for genre={genre!r} artist={artist!r}[/yellow]")
-        _spotify_update(genre=genre, artist=artist)
-    else:
-        console.print("[red]Provide --genre, --artist, or --year.[/red]")
-        raise typer.Exit(1)
+    console.print(f"[cyan]Discovering songs for artist: {artist!r}[/cyan]")
+    result = run_expansion_sync(artist=artist)
+    console.print(
+        f"[green]Discovery complete:[/green] "
+        f"inserted={result['processed']} rejected={result['rejected']}"
+    )
 
-    enrich_metadata()
     download_lyrics()
     build_vocabulary_index()
     generate_embeddings()
     console.print("[green]Update complete.[/green]")
-
-
-def _spotify_update(genre: Optional[str], artist: Optional[str]) -> None:
-
-
-    from music_teacher_ai.core.spotify_client import get_client
-
-    sp = get_client()
-    if artist:
-        results = sp.search(q=f"artist:{artist}", type="artist", limit=1)
-        items = results.get("artists", {}).get("items", [])
-        if not items:
-            console.print(f"[red]Artist not found: {artist}[/red]")
-            return
-        artist_id = items[0]["id"]
-        albums = sp.artist_albums(artist_id, album_type="album", limit=50)
-        for album in albums.get("items", []):
-            tracks = sp.album_tracks(album["id"])
-            for track in tracks.get("items", []):
-                full = sp.track(track["id"])
-                _upsert_track(sp, full)
-    elif genre:
-        results = sp.search(q=f"genre:{genre}", type="track", limit=50)
-        for track in results.get("tracks", {}).get("items", []):
-            _upsert_track(sp, track)
-
-
-def _upsert_track(sp, item: dict) -> None:
-    import json
-
-    from sqlmodel import select
-
-    from music_teacher_ai.core.spotify_client import _parse_track
-    from music_teacher_ai.database.models import Artist as ArtistModel
-    from music_teacher_ai.database.models import Song as SongModel
-
-    meta = _parse_track(sp, item)
-    with get_session() as session:
-        artist = session.exec(
-            select(ArtistModel).where(ArtistModel.spotify_id == meta.artist_spotify_id)
-        ).first()
-        if not artist:
-            artist = ArtistModel(
-                name=meta.artist,
-                spotify_id=meta.artist_spotify_id,
-                genres=json.dumps(meta.genres),
-            )
-            session.add(artist)
-            session.flush()
-
-        song = session.exec(
-            select(SongModel).where(SongModel.spotify_id == meta.spotify_id)
-        ).first()
-        if not song:
-            song = SongModel(
-                spotify_id=meta.spotify_id,
-                title=meta.title,
-                artist_id=artist.id,
-                release_year=meta.release_year,
-                popularity=meta.popularity,
-                duration_ms=meta.duration_ms,
-                tempo=meta.tempo,
-                valence=meta.valence,
-                energy=meta.energy,
-                danceability=meta.danceability,
-            )
-            session.add(song)
-        session.commit()
 
 
 @app.command()
@@ -1080,6 +974,203 @@ def config(
         border_style="yellow",
         expand=False,
     ))
+
+
+@app.command()
+def inspect(
+    target: str = typer.Argument("songs", help="What to inspect: 'songs'"),
+    limit: int = typer.Option(500, "--limit", help="Maximum songs to scan."),
+    fix: bool = typer.Option(False, "--fix", help="Delete invalid records automatically."),
+):
+    """
+    Scan the database for corrupted or suspicious records.
+
+    Examples:
+
+      music-teacher inspect songs
+
+      music-teacher inspect songs --limit 1000
+
+      music-teacher inspect songs --fix
+    """
+    from sqlmodel import select
+
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.database.sqlite import get_session
+    from music_teacher_ai.pipeline.validation import (
+        validate_artist,
+        validate_lyrics,
+        validate_title,
+    )
+
+    if target != "songs":
+        console.print(f"[red]Unknown target '{target}'. Use: songs[/red]")
+        raise typer.Exit(1)
+
+    issues_found = 0
+
+    with get_session() as session:
+        songs = session.exec(select(Song).limit(limit)).all()
+        total = len(songs)
+        console.print(f"[cyan]Scanning {total} songs…[/cyan]")
+
+        for song in songs:
+            artist_obj = session.get(Artist, song.artist_id)
+            artist_name = artist_obj.name if artist_obj else ""
+            lyr = session.exec(
+                select(Lyrics).where(Lyrics.song_id == song.id)
+            ).first()
+
+            song_issues: list[str] = []
+
+            tr = validate_title(song.title)
+            if not tr.ok:
+                song_issues.extend(f"title: {i}" for i in tr.issues)
+
+            ar = validate_artist(artist_name)
+            if not ar.ok:
+                song_issues.extend(f"artist: {i}" for i in ar.issues)
+
+            if lyr:
+                lr = validate_lyrics(lyr.lyrics_text)
+                if not lr.ok:
+                    song_issues.extend(f"lyrics: {i}" for i in lr.issues)
+
+            if song_issues:
+                issues_found += 1
+                console.print(
+                    f"[yellow]Song ID {song.id}[/yellow] "
+                    f"[bold]{song.title!r}[/bold] – {artist_name!r}"
+                )
+                for iss in song_issues:
+                    console.print(f"  [red]✗[/red] {iss}")
+                if fix:
+                    if lyr and any("lyrics" in i for i in song_issues):
+                        session.delete(lyr)
+                        console.print(f"  [dim]Deleted corrupt lyrics for song {song.id}[/dim]")
+                    if any(i.startswith("title") or i.startswith("artist") for i in song_issues):
+                        session.delete(song)
+                        console.print(f"  [dim]Deleted corrupt song record {song.id}[/dim]")
+
+        if fix and issues_found:
+            session.commit()
+
+    if issues_found:
+        console.print(
+            f"\n[yellow]Found {issues_found} suspicious record(s).[/yellow]"
+            + (" Fixed." if fix else " Run with [bold]--fix[/bold] to delete them.")
+        )
+    else:
+        console.print(f"[green]All {total} songs passed validation.[/green]")
+
+
+@app.command()
+def repair(
+    target: str = typer.Argument(..., help="Target type: 'song'"),
+    record_id: int = typer.Argument(..., help="Record ID to repair"),
+):
+    """
+    Re-fetch metadata and lyrics for a specific song.
+
+    Backs up the current record, clears corrupted fields, then fetches fresh
+    data from external APIs.  Rolls back if validation fails.
+
+    Example:
+
+      music-teacher repair song 262
+    """
+
+    from sqlmodel import select
+
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
+    from music_teacher_ai.database.sqlite import get_session
+    from music_teacher_ai.pipeline.validation import validate_lyrics, validate_title
+
+    if target != "song":
+        console.print(f"[red]Unknown target '{target}'. Use: song <id>[/red]")
+        raise typer.Exit(1)
+
+    with get_session() as session:
+        song = session.get(Song, record_id)
+        if not song:
+            console.print(f"[red]Song {record_id} not found.[/red]")
+            raise typer.Exit(1)
+
+        artist_obj = session.get(Artist, song.artist_id)
+        artist_name = artist_obj.name if artist_obj else ""
+        console.print(
+            f"[cyan]Repairing song {record_id}:[/cyan] "
+            f"[bold]{song.title!r}[/bold] – {artist_name!r}"
+        )
+
+        # --- Backup current state ---
+        backup_lyrics   = None
+        lyr = session.exec(select(Lyrics).where(Lyrics.song_id == record_id)).first()
+        if lyr:
+            backup_lyrics = lyr.lyrics_text
+
+        # --- Validate title first ---
+        if not validate_title(song.title).ok:
+            console.print("[yellow]Title looks corrupt — cannot safely re-fetch. Aborting.[/yellow]")
+            raise typer.Exit(1)
+
+        # --- Re-fetch metadata ---
+        console.print("[dim]  Re-fetching metadata…[/dim]")
+        try:
+            from music_teacher_ai.pipeline.metadata_enrichment import (
+                _apply_metadata,
+                _enrich_with_lastfm,
+                _try_musicbrainz,
+            )
+            meta = _try_musicbrainz(song.title, artist_name)
+            if meta:
+                meta = _enrich_with_lastfm(meta)
+                song.metadata_source = None   # force re-apply
+                _apply_metadata(session, song, artist_obj, meta)
+                console.print("[green]  Metadata updated.[/green]")
+            else:
+                console.print("[yellow]  No metadata found — keeping existing.[/yellow]")
+        except Exception as exc:
+            console.print(f"[yellow]  Metadata fetch failed: {exc}[/yellow]")
+
+        # --- Re-fetch lyrics ---
+        console.print("[dim]  Re-fetching lyrics…[/dim]")
+        try:
+            from music_teacher_ai.core.lyrics_client import fetch_lyrics
+            from music_teacher_ai.pipeline.validation import validate_lyrics
+
+            new_lyrics = fetch_lyrics(song.title, artist_name)
+            if new_lyrics:
+                vr = validate_lyrics(new_lyrics)
+                if vr.ok:
+                    if lyr:
+                        lyr.lyrics_text = new_lyrics
+                        session.add(lyr)
+                    else:
+                        import re as _re
+                        words = _re.findall(r"\b[a-z']+\b", new_lyrics.lower())
+                        session.add(Lyrics(
+                            song_id=record_id,
+                            lyrics_text=new_lyrics,
+                            word_count=len(words),
+                            unique_words=len(set(words)),
+                        ))
+                    console.print("[green]  Lyrics updated.[/green]")
+                else:
+                    console.print(f"[yellow]  New lyrics failed validation ({vr}) — reverting.[/yellow]")
+                    if lyr and backup_lyrics:
+                        lyr.lyrics_text = backup_lyrics
+                        session.add(lyr)
+            else:
+                console.print("[yellow]  No lyrics found — keeping existing.[/yellow]")
+        except Exception as exc:
+            console.print(f"[yellow]  Lyrics fetch failed: {exc}[/yellow]")
+            if lyr and backup_lyrics:
+                lyr.lyrics_text = backup_lyrics
+                session.add(lyr)
+
+        session.commit()
+        console.print(f"[green]Repair complete for song {record_id}.[/green]")
 
 
 @app.command()

@@ -4,7 +4,8 @@ A local knowledge base of song lyrics and metadata to help English teachers find
 
 ## What It Does
 
-- Ingests Billboard Hot 100 charts (1960 → present) from Spotify and Genius
+- Bootstraps from a built-in curated song seed (fast local startup)
+- Expands the catalog on demand (for example by artist) and enriches metadata
 - Stores lyrics, metadata, and vocabulary indexes locally in SQLite
 - Supports keyword search, semantic search, and natural language queries
 - Provides education-oriented outputs (fill-in-the-blank, vocabulary levels, phrasal verbs, lesson bundles)
@@ -70,15 +71,15 @@ Genius API token: https://genius.com/api-clients
 music-teacher init
 ```
 
-This runs the full pipeline:
+This runs the bootstrap pipeline:
 
-1. Fetches Billboard Hot 100 for every year (1960 → now)
-2. Enriches each song with Spotify metadata
+1. Creates the database schema
+2. Seeds songs from `music_teacher_ai/ingestion/songs_seed.json`
 3. Downloads lyrics from Genius
 4. Builds a vocabulary index (word → songs)
 5. Generates sentence embeddings for semantic search
 
-Estimated time: several hours for the full dataset. API rate limits apply.
+Estimated time: minutes for the default seed (depends on lyric API latency).
 
 ---
 
@@ -90,9 +91,10 @@ music-teacher migrate-db                # Apply explicit DB migrations/indexes
 music-teacher search --word dream       # Find songs containing "dream"
 music-teacher search --query "songs about freedom"  # Semantic search
 music-teacher search --word love --year-min 1970 --year-max 1980
-music-teacher update --genre jazz       # Add more songs by genre
-music-teacher update --artist "Nina Simone"
-music-teacher update --year 1994
+music-teacher update "Nina Simone"      # Expand catalog by artist
+music-teacher inspect songs             # Validate suspicious/corrupt song data
+music-teacher inspect songs --fix       # Delete invalid rows automatically
+music-teacher repair song 262           # Re-fetch metadata + lyrics for one song
 music-teacher retry-failed              # Retry failed ingestion steps
 music-teacher rebuild-embeddings        # Rebuild FAISS index
 ```
@@ -128,6 +130,8 @@ Key endpoints:
 ```
 GET  /search?word=dream&year=1995
      -> {"results":[...], "database_expansion_triggered":bool}
+GET  /search/simple?q=adele&limit=50
+     -> local title/artist search used by the web UI
 POST /query   {"query": "songs about hope"}
 GET  /songs/{id}
 GET  /lyrics/{id}
@@ -212,7 +216,7 @@ Run the same gate in CI with GitHub Actions:
 
 ---
 
-## Resource Usage (estimated)
+## Resource Usage (estimated, seed-first default)
 
 | Resource | Usage |
 |----------|-------|

@@ -264,6 +264,49 @@ def _run_expansion(
 # Public trigger
 # ---------------------------------------------------------------------------
 
+def run_expansion_sync(
+    genre: Optional[str] = None,
+    artist: Optional[str] = None,
+    year: Optional[int] = None,
+    word: Optional[str] = None,
+) -> dict:
+    """
+    Run the expansion job synchronously in the current thread and return its
+    result dict (processed, rejected, staged).
+
+    Use this from CLI commands that must wait for results before running
+    subsequent pipeline stages (metadata, lyrics, embeddings).
+    """
+    if not any([genre, artist, year]):
+        return {"processed": 0, "rejected": 0, "staged": 0}
+
+    origin = build_query_origin(genre, artist, year, word)
+
+    with _jobs_lock:
+        if origin in _active_jobs:
+            return {"processed": 0, "rejected": 0, "staged": 0}
+        _active_jobs.add(origin)
+
+    # _run_expansion owns the _active_jobs.discard in its finally block
+    _run_expansion(origin, genre, artist, year)
+
+    with get_session() as session:
+        row = session.exec(
+            select(BackgroundJob)
+            .where(BackgroundJob.query_origin == origin)
+            .order_by(BackgroundJob.id.desc())
+        ).first()
+    if row and row.details:
+        import re
+        nums = {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", row.details)}
+        return {
+            "processed": nums.get("processed", 0),
+            "rejected":  nums.get("rejected", 0),
+            "staged":    nums.get("staged", 0),
+        }
+    return {"processed": 0, "rejected": 0, "staged": 0}
+
+
 def trigger_expansion(
     genre: Optional[str] = None,
     artist: Optional[str] = None,

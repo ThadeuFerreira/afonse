@@ -140,20 +140,9 @@ function initSearch() {
     results.append(spinner());
     addRecent(q);
     try {
-      const semantic = qs('#mode-semantic') && qs('#mode-semantic').checked;
-      let data;
-      if (semantic) {
-        data = await api('/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, top_k: 20 }),
-        });
-        data = { results: data.results || data };
-      } else {
-        data = await api(`/search?word=${encodeURIComponent(q)}&limit=30`);
-      }
+      const data = await api(`/search/simple?q=${encodeURIComponent(q)}&limit=50`);
       clearEl(results);
-      const items = data.results || data;
+      const items = data.results || [];
       if (!items.length) {
         results.append(alert('No songs found.', 'info'));
         return;
