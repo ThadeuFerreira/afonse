@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Imagine",
+    "artist": "John Lennon",
+    "year": 1971,
+    "lyrics": "Imagine there's no heaven\nIt's easy if you try\nNo hell below us\nAbove us only sky\nImagine all the people\nLiving for today"
+  },
+  {
+    "title": "Hey Jude",
+    "artist": "The Beatles",
+    "year": 1968,
+    "lyrics": "Hey Jude, don't make it bad\nTake a sad song and make it better\nRemember to let her into your heart\nThen you can start to make it better"
+  },
+  {
+    "title": "Billie Jean",
+    "artist": "Michael Jackson",
+    "year": 1983,
+    "lyrics": "She was more like a beauty queen from a movie scene\nI said don't mind, but what do you mean, I am the one\nWho will dance on the floor in the round\nShe said I am the one who will dance on the floor in the round"
+  },
+  {
+    "title": "Like a Rolling Stone",
+    "artist": "Bob Dylan",
+    "year": 1965,
+    "lyrics": "Once upon a time you dressed so fine\nThrew the bums a dime in your prime, didn't you\nPeople call say beware doll, you're bound to fall\nYou thought they were all kidding you"
+  },
+  {
+    "title": "Smells Like Teen Spirit",
+    "artist": "Nirvana",
+    "year": 1991,
+    "lyrics": "Load up on guns, bring your friends\nIt's fun to lose and to pretend\nShe's overboard and self-assured\nOh no, I know a dirty word"
+  },
+  {
+    "title": "Bohemian Rhapsody",
+    "artist": "Queen",
+    "year": 1975,
+    "lyrics": "Is this the real life? Is this just fantasy?\nCaught in a landslide, no escape from reality\nOpen your eyes, look up to the skies and see\nI'm just a poor boy, I need no sympathy"
+  },
+  {
+    "title": "Sweet Dreams",
+    "artist": "Eurythmics",
+    "year": 1983,
+    "lyrics": "Sweet dreams are made of this\nWho am I to disagree?\nI travel the world and the seven seas\nEverybody's looking for something"
+  },
+  {
+    "title": "Wonderwall",
+    "artist": "Oasis",
+    "year": 1995,
+    "lyrics": "Today is gonna be the day\nThat they're gonna throw it back to you\nBy now you should've somehow\nRealized what you gotta do"
+  },
+  {
+    "title": "Hotel California",
+    "artist": "Eagles",
+    "year": 1977,
+    "lyrics": "On a dark desert highway, cool wind in my hair\nWarm smell of colitas rising up through the air\nUp ahead in the distance, I saw a shimmering light\nMy head grew heavy and my sight grew dim"
+  },
+  {
+    "title": "Yesterday",
+    "artist": "The Beatles",
+    "year": 1965,
+    "lyrics": "Yesterday, all my troubles seemed so far away\nNow it looks as though they're here to stay\nOh, I believe in yesterday\nSuddenly, I'm not half the man I used to be"
+  }
+]

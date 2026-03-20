@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-_DEMO_JSON = Path(__file__).resolve().parent.parent / "data" / "demo_songs.json"
+_DEMO_JSON = Path(__file__).resolve().parent.parent / "music_teacher_ai" / "demo" / "demo_songs.json"
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ _DEMO_JSON = Path(__file__).resolve().parent.parent / "data" / "demo_songs.json"
 
 class TestDemoDataset:
     def test_file_exists(self):
-        assert _DEMO_JSON.exists(), "data/demo_songs.json is missing"
+        assert _DEMO_JSON.exists(), "music_teacher_ai/demo/demo_songs.json is missing"
 
     def test_is_valid_json(self):
         data = json.loads(_DEMO_JSON.read_text(encoding="utf-8"))

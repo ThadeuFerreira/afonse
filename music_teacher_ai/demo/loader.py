@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 
-_DEMO_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "demo_songs.json"
+_DEMO_PATH = Path(__file__).resolve().parent / "demo_songs.json"
 
 # Keys whose absence in the environment triggers a credential warning.
 _CREDENTIAL_KEYS = [
