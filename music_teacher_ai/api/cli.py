@@ -120,7 +120,7 @@ def update(
     from music_teacher_ai.pipeline.vocabulary_indexer import build_vocabulary_index
 
     console.print(f"[cyan]Discovering songs for artist: {artist!r}[/cyan]")
-    result = run_expansion_sync(artist=artist, genre=genre, year=year, word=word, limit=limit)
+    result = run_expansion_sync(artist=artist, genre=genre, year=year, word=word)
     console.print(
         f"[green]Discovery complete:[/green] "
         f"inserted={result['processed']} rejected={result['rejected']}"
