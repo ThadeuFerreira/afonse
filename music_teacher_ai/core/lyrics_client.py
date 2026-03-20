@@ -1,10 +1,11 @@
+import os
 import re
 import threading
 from typing import Optional
 
 import lyricsgenius
+from dotenv import load_dotenv
 
-from music_teacher_ai.config.settings import GENIUS_ACCESS_TOKEN
 from music_teacher_ai.core.api_cache import cached_api
 
 # Thread-local storage so each worker thread gets its own Genius session.
@@ -12,15 +13,37 @@ from music_teacher_ai.core.api_cache import cached_api
 _thread_local = threading.local()
 
 
+class GeniusTokenMissingError(RuntimeError):
+    """Raised when GENIUS_ACCESS_TOKEN is not configured."""
+
+
+def _get_token() -> str:
+    """Read the Genius token from the environment, reloading .env if needed."""
+    token = os.getenv("GENIUS_ACCESS_TOKEN", "")
+    if not token:
+        load_dotenv()
+        token = os.getenv("GENIUS_ACCESS_TOKEN", "")
+    return token
+
+
 def get_genius() -> lyricsgenius.Genius:
-    if not hasattr(_thread_local, "genius"):
+    token = _get_token()
+    if not token:
+        raise GeniusTokenMissingError(
+            "GENIUS_ACCESS_TOKEN is not set. "
+            "Run 'music-teacher config' to add your Genius API token."
+        )
+    # Re-create the client when the token changes (e.g. after config update)
+    existing: lyricsgenius.Genius | None = getattr(_thread_local, "genius", None)
+    if existing is None or getattr(_thread_local, "genius_token", None) != token:
         _thread_local.genius = lyricsgenius.Genius(
-            GENIUS_ACCESS_TOKEN,
+            token,
             skip_non_songs=True,
             excluded_terms=["(Remix)", "(Live)"],
             remove_section_headers=True,
             verbose=False,
         )
+        _thread_local.genius_token = token
     return _thread_local.genius
 
 
@@ -31,6 +54,8 @@ def fetch_lyrics(title: str, artist: str) -> Optional[str]:
         song = genius.search_song(title, artist)
         if song and song.lyrics:
             return normalize_lyrics(song.lyrics)
+    except GeniusTokenMissingError:
+        raise
     except Exception:
         pass
     return None

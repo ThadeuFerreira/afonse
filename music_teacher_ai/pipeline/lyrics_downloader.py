@@ -32,7 +32,7 @@ from rich.progress import (
 )
 from sqlmodel import select
 
-from music_teacher_ai.core.lyrics_client import fetch_lyrics
+from music_teacher_ai.core.lyrics_client import GeniusTokenMissingError, fetch_lyrics
 from music_teacher_ai.database.models import Artist, IngestionFailure, Lyrics, Song
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.reporter import PipelineReport
@@ -65,6 +65,8 @@ def _fetch_one(title: str, artist: str) -> tuple[str, Optional[str]]:
         if not text:
             return ("not_found", None)
         return ("ok", text)
+    except GeniusTokenMissingError:
+        raise  # propagate — caught by the caller to abort the whole run
     except Exception as exc:
         if _is_rate_limit(exc):
             return ("rate_limit", str(exc))
@@ -73,7 +75,15 @@ def _fetch_one(title: str, artist: str) -> tuple[str, Optional[str]]:
 
 def download_lyrics(initial_workers: int = 5) -> None:
     """Download lyrics for songs that don't have a Lyrics row yet."""
+    from music_teacher_ai.core.lyrics_client import _get_token
     from music_teacher_ai.pipeline.validation import validate_lyrics
+
+    if not _get_token():
+        console.print(
+            "[bold red]GENIUS_ACCESS_TOKEN is not configured — cannot download lyrics.[/bold red]\n"
+            "Run [cyan]music-teacher config[/cyan] to set your Genius API token, then retry."
+        )
+        return
 
     report = PipelineReport("lyrics")
 
@@ -143,7 +153,13 @@ def download_lyrics(initial_workers: int = 5) -> None:
 
                 for future in as_completed(futures):
                     song = futures[future]
-                    status, data = future.result()
+                    try:
+                        status, data = future.result()
+                    except GeniusTokenMissingError as exc:
+                        progress.stop()
+                        console.print(f"[bold red]{exc}[/bold red]")
+                        report.save()
+                        return
 
                     if status == "ok":
                         ok_batch.append((song, data))
