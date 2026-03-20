@@ -6,22 +6,26 @@ detection into a single Lesson object that can be serialised for API responses.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from music_teacher_ai.education_services.exercises.fill_in_blank import (
     FillInBlankExercise,
-    generate as generate_exercise,
 )
-from music_teacher_ai.education_services.vocabulary.analyzer import (
-    VocabularyAnalysis,
-    analyze as analyze_vocabulary,
+from music_teacher_ai.education_services.exercises.fill_in_blank import (
+    generate as generate_exercise,
 )
 from music_teacher_ai.education_services.phrase_detection.phrasal_verbs import (
     PhrasalVerbReport,
+)
+from music_teacher_ai.education_services.phrase_detection.phrasal_verbs import (
     detect as detect_phrasal_verbs,
 )
-
+from music_teacher_ai.education_services.vocabulary.analyzer import (
+    VocabularyAnalysis,
+)
+from music_teacher_ai.education_services.vocabulary.analyzer import (
+    analyze as analyze_vocabulary,
+)
 
 # ---------------------------------------------------------------------------
 # Data types

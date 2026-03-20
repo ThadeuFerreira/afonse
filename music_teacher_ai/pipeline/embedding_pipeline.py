@@ -39,7 +39,7 @@ def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
             }
 
         lyrics_rows = session.exec(select(Lyrics)).all()
-        pending = [l for l in lyrics_rows if l.song_id not in embedded_ids]
+        pending = [row for row in lyrics_rows if row.song_id not in embedded_ids]
 
     if not pending:
         console.print("[yellow]No new lyrics to embed.[/yellow]")
@@ -57,7 +57,7 @@ def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
 
     for i in range(0, len(pending), batch_size):
         batch = pending[i : i + batch_size]
-        texts = [l.lyrics_text for l in batch]
+        texts = [row.lyrics_text for row in batch]
         vectors = model.encode(texts, normalize_embeddings=True)
 
         # FAISS assigns sequential IDs starting from index.ntotal

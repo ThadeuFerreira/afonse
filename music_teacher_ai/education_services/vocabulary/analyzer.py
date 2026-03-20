@@ -8,7 +8,7 @@ treated as C2 (advanced / rare).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ _WORD_LEVELS: dict[str, CefrLevel] = {
     "fundamental": "C1", "hypothesize": "C1", "implication": "C1",
     "inevitable": "C1", "inherent": "C1", "integrate": "C1", "intricate": "C1",
     "manifest": "C1", "nuance": "C1", "objective": "C1", "obsolete": "C1",
-    "paradigm": "C1", "perceive": "C1", "phenomenon": "C1", "pragmatic": "C1",
+    "paradigm": "C1", "phenomenon": "C1", "pragmatic": "C1",
     "prominent": "C1", "reconcile": "C1", "reinforce": "C1", "scrutinize": "C1",
     "simultaneous": "C1", "speculate": "C1", "subsequent": "C1", "supplement": "C1",
     "synthesize": "C1", "theorem": "C1", "underlying": "C1", "universal": "C1",

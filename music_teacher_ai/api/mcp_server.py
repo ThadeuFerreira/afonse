@@ -7,23 +7,29 @@ Run with:
 import json
 from typing import Any, Callable
 
+from sqlmodel import select
+
 from music_teacher_ai.application.config_service import get_status as cfg_get_status
 from music_teacher_ai.application.config_service import update_credentials as cfg_update_credentials
 from music_teacher_ai.application.enrichment_service import EnrichRequest, run_enrichment
 from music_teacher_ai.application.errors import ValidationError
 from music_teacher_ai.application.playlist_service import (
     create_playlist as svc_create_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     export_playlist as svc_export_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     get_playlist as svc_get_playlist,
+)
+from music_teacher_ai.application.playlist_service import (
     list_playlists as svc_list_playlists,
 )
 from music_teacher_ai.application.search_service import SearchRequest, keyword_search_with_expansion
 from music_teacher_ai.application.search_service import semantic_query as svc_semantic_query
-from music_teacher_ai.search.keyword_search import search_songs
-from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.database.models import Lyrics
-from sqlmodel import select
-
+from music_teacher_ai.database.sqlite import get_session
+from music_teacher_ai.search.keyword_search import search_songs
 
 TOOLS = [
     {
@@ -403,7 +409,7 @@ def _handle_enrich_database(inputs: dict[str, Any]) -> Any:
 
 def _get_lyrics_for_song(song_id: int) -> tuple[str, str, str]:
     """Return (lyrics_text, song_title, artist_name) or raise ValueError."""
-    from music_teacher_ai.database.models import Song, Artist, Lyrics
+    from music_teacher_ai.database.models import Artist, Lyrics, Song
     with get_session() as session:
         lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
         if not lyr:

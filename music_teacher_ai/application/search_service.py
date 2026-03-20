@@ -17,8 +17,8 @@ class SearchRequest:
 
 
 def keyword_search_with_expansion(req: SearchRequest) -> dict:
-    from music_teacher_ai.pipeline.jobs import get_job_runner
     from music_teacher_ai.pipeline.expansion import EXPANSION_THRESHOLD
+    from music_teacher_ai.pipeline.jobs import get_job_runner
 
     results = search_songs(
         word=req.word,

@@ -27,9 +27,10 @@ _CREDENTIAL_KEYS = [
 
 def is_db_empty() -> bool:
     """Return True when the songs table has no rows (DB is uninitialised)."""
+    from sqlmodel import func, select
+
     from music_teacher_ai.database.models import Song
     from music_teacher_ai.database.sqlite import get_session
-    from sqlmodel import func, select
 
     try:
         with get_session() as session:
@@ -52,9 +53,10 @@ def load_demo_songs() -> int:
     Returns:
         Number of songs actually inserted.
     """
+    from sqlmodel import select
+
     from music_teacher_ai.database.models import Artist, Lyrics, Song
     from music_teacher_ai.database.sqlite import get_session
-    from sqlmodel import select
 
     raw: list[dict] = json.loads(_DEMO_PATH.read_text(encoding="utf-8"))
     inserted = 0

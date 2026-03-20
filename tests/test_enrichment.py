@@ -204,7 +204,6 @@ def _simple_variant(name, songs_per_page, max_page=5):
 
     def fetch(page):
         seen_pages.add(page)
-        offset = (page - 1) * len(songs_per_page)
         return [CandidateSong(f"{s.title}@p{page}", s.artist) for s in songs_per_page]
 
     return Variant(name=name, fetch_fn=fetch, max_page=max_page)

@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -49,9 +50,6 @@ def _require_admin(
     from music_teacher_ai.config.credentials import verify_admin_token
     if not verify_admin_token(credentials.credentials):
         raise HTTPException(status_code=401, detail="Invalid admin token")
-
-from contextlib import asynccontextmanager
-
 
 @asynccontextmanager
 async def _lifespan(app_: FastAPI):

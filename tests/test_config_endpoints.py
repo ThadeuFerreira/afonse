@@ -5,8 +5,9 @@ Tests for config endpoints in:
 
 No real .env file is written; credentials module is patched throughout.
 """
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -147,6 +148,7 @@ def test_rest_post_config_empty_credentials(rest_client):
 def test_rest_post_config_non_localhost():
     """Requests from a non-localhost IP must be rejected with 403."""
     from fastapi.testclient import TestClient
+
     from music_teacher_ai.api.rest_api import app
 
     # base_url with a non-localhost host simulates remote client

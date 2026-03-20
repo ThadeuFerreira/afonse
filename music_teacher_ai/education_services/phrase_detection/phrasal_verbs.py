@@ -8,7 +8,7 @@ and the line(s) it appears on.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Curated phrasal verb list  (verb + particle(s))

@@ -1,7 +1,7 @@
 import re
 
 from rich.console import Console
-from sqlmodel import select, delete
+from sqlmodel import delete, select
 
 from music_teacher_ai.database.models import Lyrics, VocabularyIndex
 from music_teacher_ai.database.sqlite import get_session
@@ -43,7 +43,7 @@ def build_vocabulary_index(rebuild: bool = False) -> None:
             }
 
         lyrics_rows = session.exec(select(Lyrics)).all()
-        pending = [l for l in lyrics_rows if l.song_id not in indexed_ids]
+        pending = [row for row in lyrics_rows if row.song_id not in indexed_ids]
 
     total = len(pending)
     report.set("total", total)
