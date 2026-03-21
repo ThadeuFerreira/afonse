@@ -32,7 +32,11 @@ from rich.progress import (
 )
 from sqlmodel import select
 
-from music_teacher_ai.core.lyrics_client import GeniusTokenMissingError, fetch_lyrics
+from music_teacher_ai.core.lyrics_client import (
+    GeniusBlockedByCloudflareError,
+    GeniusTokenMissingError,
+    fetch_lyrics,
+)
 from music_teacher_ai.database.models import Artist, IngestionFailure, Lyrics, Song
 from music_teacher_ai.database.sqlite import get_session
 from music_teacher_ai.pipeline.reporter import PipelineReport
@@ -67,6 +71,8 @@ def _fetch_one(title: str, artist: str) -> tuple[str, Optional[str]]:
         return ("ok", text)
     except GeniusTokenMissingError:
         raise  # propagate — caught by the caller to abort the whole run
+    except GeniusBlockedByCloudflareError as exc:
+        return ("blocked", str(exc))
     except Exception as exc:
         if _is_rate_limit(exc):
             return ("rate_limit", str(exc))
@@ -75,8 +81,15 @@ def _fetch_one(title: str, artist: str) -> tuple[str, Optional[str]]:
 
 def download_lyrics(initial_workers: int = 5) -> None:
     """Download lyrics for songs that don't have a Lyrics row yet."""
+    import os
+
     from music_teacher_ai.core.lyrics_client import _get_token
     from music_teacher_ai.pipeline.validation import validate_lyrics
+
+    # Allow overriding worker count via env — use 1–2 on VPS to avoid Cloudflare
+    env_workers = os.getenv("GENIUS_WORKERS")
+    if env_workers:
+        initial_workers = max(1, int(env_workers))
 
     if not _get_token():
         console.print(
@@ -114,7 +127,7 @@ def download_lyrics(initial_workers: int = 5) -> None:
     workers = initial_workers
     remaining: list[Song] = list(pending_songs)
     hard_limited = False
-    downloaded = failed = not_found = rate_limit_events = 0
+    downloaded = failed = not_found = rate_limit_events = blocked = 0
 
     with Progress(
         SpinnerColumn(),
@@ -187,6 +200,15 @@ def download_lyrics(initial_workers: int = 5) -> None:
                             error="not_found",
                         )
                         not_found += 1
+                    elif status == "blocked":
+                        fail_batch.append((song, "blocked_by_cloudflare"))
+                        report.add_error(
+                            song_id=song.id,
+                            title=song.title,
+                            artist=artist_map[song.id],
+                            error="blocked_by_cloudflare",
+                        )
+                        blocked += 1
                     else:
                         fail_batch.append((song, data))
                         report.add_error(
@@ -283,6 +305,7 @@ def download_lyrics(initial_workers: int = 5) -> None:
     report.set("downloaded", downloaded)
     report.set("failed", failed)
     report.set("not_found", not_found)
+    report.set("blocked_by_cloudflare", blocked)
     report.set("rate_limit_events", rate_limit_events)
     report.set("hard_limited", int(hard_limited))
     report.set("final_workers", workers)
@@ -300,7 +323,16 @@ def download_lyrics(initial_workers: int = 5) -> None:
         not_found_rate = not_found / total
         error_rate = (failed - not_found) / total if failed > not_found else 0
 
-        if downloaded == 0 and not_found == total:
+        if downloaded == 0 and blocked > 0:
+            report.add_event(
+                (
+                    f"{blocked}/{total} songs were blocked by Cloudflare bot checks. "
+                    "This VPS IP is likely challenged by Genius."
+                ),
+                kind="diagnosis",
+                cause="cloudflare_challenge",
+            )
+        elif downloaded == 0 and not_found == total:
             from music_teacher_ai.core.lyrics_client import _get_token
             token_present = bool(_get_token())
             if token_present:
@@ -341,6 +373,6 @@ def download_lyrics(initial_workers: int = 5) -> None:
     console.print(
         f"[green]Lyrics download complete.[/green] "
         f"downloaded={downloaded} failed={failed} not_found={not_found} "
-        f"rate_limit_events={rate_limit_events} hard_limited={hard_limited}"
+        f"blocked={blocked} rate_limit_events={rate_limit_events} hard_limited={hard_limited}"
     )
     console.print(f"[dim]Report: {report_path}[/dim]")

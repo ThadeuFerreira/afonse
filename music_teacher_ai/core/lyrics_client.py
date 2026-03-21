@@ -23,6 +23,21 @@ class GeniusTokenMissingError(RuntimeError):
     """Raised when GENIUS_ACCESS_TOKEN is not configured."""
 
 
+class GeniusBlockedByCloudflareError(RuntimeError):
+    """Raised when Genius responds with a Cloudflare bot-check page."""
+
+
+def _looks_like_cloudflare_challenge(text: str) -> bool:
+    t = (text or "").lower()
+    return (
+        "cloudflare" in t
+        or "challenge-platform" in t
+        or "make sure you're a human" in t
+        or "__cf_chl_" in t
+        or "enable javascript and cookies to continue" in t
+    )
+
+
 def _get_token() -> str:
     """Read the Genius token from the environment, reloading .env if needed."""
     token = os.getenv("GENIUS_ACCESS_TOKEN", "")
@@ -48,12 +63,17 @@ def get_genius() -> lyricsgenius.Genius:
                 bool(token),
                 token[:6] if token else "",
             )
+        # GENIUS_SLEEP controls the per-request delay (seconds).
+        # Default 0.5s on VPS/cloud to reduce Cloudflare bot-detection risk.
+        # Set GENIUS_SLEEP=0 locally if speed matters.
+        sleep_time = float(os.getenv("GENIUS_SLEEP", "0.5"))
         _thread_local.genius = lyricsgenius.Genius(
             token,
             skip_non_songs=True,
             excluded_terms=["(Remix)", "(Live)"],
             remove_section_headers=True,
             verbose=False,
+            sleep_time=sleep_time,
         )
         _thread_local.genius_token = token
     return _thread_local.genius
@@ -84,6 +104,10 @@ def fetch_lyrics(title: str, artist: str) -> Optional[str]:
     except GeniusTokenMissingError:
         raise
     except Exception as exc:
+        if _looks_like_cloudflare_challenge(str(exc)):
+            raise GeniusBlockedByCloudflareError(
+                "Genius blocked this request with a Cloudflare challenge page."
+            ) from exc
         if _debug_enabled():
             logger.warning(
                 "genius search error title=%r artist=%r error=%s",

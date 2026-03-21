@@ -1,0 +1,480 @@
+python-dotenv could not parse statement starting at line 12
+python-dotenv could not parse statement starting at line 15
+python-dotenv could not parse statement starting at line 16
+Discovering songs for artist: 'Seal'
+Discovery complete: inserted=97 rejected=0
+Downloading lyrics for 245 songs (initial workers: 5)
+api_cache hit namespace=genius fn=fetch_lyrics key=355d0d812b
+api_cache hit namespace=genius fn=fetch_lyrics key=edb2e65674
+api_cache hit namespace=genius fn=fetch_lyrics key=ed6233d401
+api_cache hit namespace=genius fn=fetch_lyrics key=1b73351f85
+api_cache hit namespace=genius fn=fetch_lyrics key=f1f96a3f57
+api_cache hit namespace=genius fn=fetch_lyrics key=c006a802f9
+api_cache hit namespace=genius fn=fetch_lyrics key=c314bf289c
+api_cache hit namespace=genius fn=fetch_lyrics key=a31d60658c
+api_cache hit namespace=genius fn=fetch_lyrics key=8bf23a7dda
+api_cache hit namespace=genius fn=fetch_lyrics key=1b520d5bdc
+api_cache hit namespace=genius fn=fetch_lyrics key=195c2be8b5
+api_cache hit namespace=genius fn=fetch_lyrics key=c96248d4c4
+api_cache hit namespace=genius fn=fetch_lyrics key=47b05bf2b3
+api_cache hit namespace=genius fn=fetch_lyrics key=8201cc22cc
+api_cache hit namespace=genius fn=fetch_lyrics key=8a9ddbebad
+api_cache hit namespace=genius fn=fetch_lyrics key=fc3e0546ad
+api_cache hit namespace=genius fn=fetch_lyrics key=b2ee2fbfe3
+api_cache hit namespace=genius fn=fetch_lyrics key=7974a01d29
+api_cache hit namespace=genius fn=fetch_lyrics key=b0d9f7b4f4
+api_cache hit namespace=genius fn=fetch_lyrics key=0df0daacd2
+api_cache hit namespace=genius fn=fetch_lyrics key=11b9154330
+api_cache hit namespace=genius fn=fetch_lyrics key=aabc79e94b
+api_cache hit namespace=genius fn=fetch_lyrics key=bf0abdda19
+api_cache hit namespace=genius fn=fetch_lyrics key=26b3161c1c
+api_cache hit namespace=genius fn=fetch_lyrics key=850e9f72aa
+api_cache hit namespace=genius fn=fetch_lyrics key=bbc3a9b239
+api_cache hit namespace=genius fn=fetch_lyrics key=98b7e20b32
+api_cache hit namespace=genius fn=fetch_lyrics key=ffbee8b341
+api_cache hit namespace=genius fn=fetch_lyrics key=f155beb9b1
+api_cache hit namespace=genius fn=fetch_lyrics key=5ae7e61880
+api_cache hit namespace=genius fn=fetch_lyrics key=312bedf239
+api_cache hit namespace=genius fn=fetch_lyrics key=e215a92d55
+api_cache hit namespace=genius fn=fetch_lyrics key=b01fa68ef7
+api_cache hit namespace=genius fn=fetch_lyrics key=7d285e6762
+api_cache hit namespace=genius fn=fetch_lyrics key=515e20ac3f
+api_cache hit namespace=genius fn=fetch_lyrics key=b756a5266b
+api_cache hit namespace=genius fn=fetch_lyrics key=25deba5557
+api_cache hit namespace=genius fn=fetch_lyrics key=c57ea0d291
+api_cache hit namespace=genius fn=fetch_lyrics key=53f4f3b878
+api_cache hit namespace=genius fn=fetch_lyrics key=6b424655b3
+api_cache hit namespace=genius fn=fetch_lyrics key=2f6fc2a1c7
+api_cache hit namespace=genius fn=fetch_lyrics key=edf2980f5a
+api_cache hit namespace=genius fn=fetch_lyrics key=45082fa203
+api_cache hit namespace=genius fn=fetch_lyrics key=4a6ceebd6f
+api_cache hit namespace=genius fn=fetch_lyrics key=ae8ede4e44
+api_cache hit namespace=genius fn=fetch_lyrics key=1270e767d8
+api_cache hit namespace=genius fn=fetch_lyrics key=608458bc53
+api_cache hit namespace=genius fn=fetch_lyrics key=a40259fe94
+api_cache hit namespace=genius fn=fetch_lyrics key=962c85c29e
+api_cache hit namespace=genius fn=fetch_lyrics key=6c126d3351
+api_cache hit namespace=genius fn=fetch_lyrics key=e883110275
+api_cache hit namespace=genius fn=fetch_lyrics key=11a7e8c997
+api_cache hit namespace=genius fn=fetch_lyrics key=085c42b75b
+api_cache hit namespace=genius fn=fetch_lyrics key=ca3e452a1b
+api_cache hit namespace=genius fn=fetch_lyrics key=545ce59ad0
+api_cache hit namespace=genius fn=fetch_lyrics key=d06bb7a0fc
+api_cache hit namespace=genius fn=fetch_lyrics key=7b1aab6d16
+api_cache hit namespace=genius fn=fetch_lyrics key=5d93ad5eb9
+api_cache hit namespace=genius fn=fetch_lyrics key=2bfa28b878
+api_cache hit namespace=genius fn=fetch_lyrics key=9647f4adde
+api_cache hit namespace=genius fn=fetch_lyrics key=ee75a5825c
+api_cache hit namespace=genius fn=fetch_lyrics key=891d05f3bd
+api_cache hit namespace=genius fn=fetch_lyrics key=d554eba886
+api_cache hit namespace=genius fn=fetch_lyrics key=d633e119fe
+api_cache hit namespace=genius fn=fetch_lyrics key=8c3bb4cf60
+api_cache hit namespace=genius fn=fetch_lyrics key=f61d1856ba
+api_cache hit namespace=genius fn=fetch_lyrics key=560a2b1d7c
+api_cache hit namespace=genius fn=fetch_lyrics key=58e9cbc829
+api_cache hit namespace=genius fn=fetch_lyrics key=6594718f6b
+api_cache hit namespace=genius fn=fetch_lyrics key=b9d1f76386
+api_cache hit namespace=genius fn=fetch_lyrics key=7080cc9713
+api_cache hit namespace=genius fn=fetch_lyrics key=ef9f2ec090
+api_cache hit namespace=genius fn=fetch_lyrics key=062c316173
+api_cache hit namespace=genius fn=fetch_lyrics key=a5ab2aa7b1
+api_cache hit namespace=genius fn=fetch_lyrics key=751906bdb5
+api_cache hit namespace=genius fn=fetch_lyrics key=94db55e5f9
+api_cache hit namespace=genius fn=fetch_lyrics key=d97de979c6
+api_cache hit namespace=genius fn=fetch_lyrics key=5faa796f02
+api_cache hit namespace=genius fn=fetch_lyrics key=f438a7dba4
+api_cache hit namespace=genius fn=fetch_lyrics key=43e77f78f4
+api_cache hit namespace=genius fn=fetch_lyrics key=f7167726d6
+api_cache hit namespace=genius fn=fetch_lyrics key=a38e1f5c33
+api_cache hit namespace=genius fn=fetch_lyrics key=41e1383b7f
+api_cache hit namespace=genius fn=fetch_lyrics key=e0b0b4acf7
+api_cache hit namespace=genius fn=fetch_lyrics key=e688e2ee2a
+api_cache hit namespace=genius fn=fetch_lyrics key=68feb1363b
+api_cache hit namespace=genius fn=fetch_lyrics key=c5fe6696a0
+api_cache hit namespace=genius fn=fetch_lyrics key=c44132b310
+api_cache hit namespace=genius fn=fetch_lyrics key=c798fe03f8
+api_cache hit namespace=genius fn=fetch_lyrics key=d58e09fc6b
+api_cache hit namespace=genius fn=fetch_lyrics key=3eb52491e4
+api_cache hit namespace=genius fn=fetch_lyrics key=0aa56b5f37
+api_cache hit namespace=genius fn=fetch_lyrics key=b0a9883c49
+api_cache hit namespace=genius fn=fetch_lyrics key=7cfdfebd43
+api_cache hit namespace=genius fn=fetch_lyrics key=4477a87cc6
+api_cache hit namespace=genius fn=fetch_lyrics key=76525ddf83
+api_cache hit namespace=genius fn=fetch_lyrics key=c89d7d8537
+api_cache hit namespace=genius fn=fetch_lyrics key=7403ceb81b
+api_cache hit namespace=genius fn=fetch_lyrics key=5abdefc8d8
+api_cache hit namespace=genius fn=fetch_lyrics key=38202d1ea9
+api_cache hit namespace=genius fn=fetch_lyrics key=9a8ce3578e
+api_cache hit namespace=genius fn=fetch_lyrics key=f6c90323e2
+api_cache hit namespace=genius fn=fetch_lyrics key=2a43080c0a
+api_cache hit namespace=genius fn=fetch_lyrics key=74f03f3f91
+api_cache hit namespace=genius fn=fetch_lyrics key=c36c2bd7c6
+api_cache hit namespace=genius fn=fetch_lyrics key=d9116e95ed
+api_cache hit namespace=genius fn=fetch_lyrics key=8295038908
+api_cache hit namespace=genius fn=fetch_lyrics key=f34ae6ddf2
+api_cache hit namespace=genius fn=fetch_lyrics key=32abbc46cc
+api_cache hit namespace=genius fn=fetch_lyrics key=712018ac4f
+api_cache hit namespace=genius fn=fetch_lyrics key=358cc1da39
+api_cache hit namespace=genius fn=fetch_lyrics key=4b223fb963
+api_cache hit namespace=genius fn=fetch_lyrics key=b2a0833104
+api_cache hit namespace=genius fn=fetch_lyrics key=0b4fe438f5
+api_cache hit namespace=genius fn=fetch_lyrics key=3301734087
+api_cache hit namespace=genius fn=fetch_lyrics key=a6b4737c3a
+api_cache hit namespace=genius fn=fetch_lyrics key=7f94d45eef
+api_cache hit namespace=genius fn=fetch_lyrics key=002e832a39
+api_cache hit namespace=genius fn=fetch_lyrics key=dd8b1339d0
+api_cache hit namespace=genius fn=fetch_lyrics key=19125e3045
+api_cache hit namespace=genius fn=fetch_lyrics key=f646ce3a1e
+api_cache hit namespace=genius fn=fetch_lyrics key=94b12e5d3d
+api_cache hit namespace=genius fn=fetch_lyrics key=c1f2b4b7c3
+api_cache hit namespace=genius fn=fetch_lyrics key=8d65296a5b
+api_cache hit namespace=genius fn=fetch_lyrics key=c127ecd8f6
+api_cache hit namespace=genius fn=fetch_lyrics key=c714e40189
+api_cache hit namespace=genius fn=fetch_lyrics key=79c3562d37
+api_cache hit namespace=genius fn=fetch_lyrics key=2cb40b165f
+api_cache hit namespace=genius fn=fetch_lyrics key=5a84a436fd
+api_cache hit namespace=genius fn=fetch_lyrics key=06145310b1
+api_cache hit namespace=genius fn=fetch_lyrics key=d632df8eb5
+api_cache hit namespace=genius fn=fetch_lyrics key=6e93590f11
+api_cache hit namespace=genius fn=fetch_lyrics key=399fb06721
+api_cache hit namespace=genius fn=fetch_lyrics key=a4cc158def
+api_cache hit namespace=genius fn=fetch_lyrics key=26c97776cd
+api_cache hit namespace=genius fn=fetch_lyrics key=95ce38948a
+api_cache hit namespace=genius fn=fetch_lyrics key=705b954dc5
+api_cache hit namespace=genius fn=fetch_lyrics key=2634d8fec9
+api_cache hit namespace=genius fn=fetch_lyrics key=55494e4502
+api_cache hit namespace=genius fn=fetch_lyrics key=5597f09c3e
+api_cache hit namespace=genius fn=fetch_lyrics key=34f9169a92
+api_cache hit namespace=genius fn=fetch_lyrics key=611ebdd6bc
+api_cache hit namespace=genius fn=fetch_lyrics key=8ed749d0b5
+api_cache hit namespace=genius fn=fetch_lyrics key=3bc3523799
+api_cache hit namespace=genius fn=fetch_lyrics key=f98c6928c4
+api_cache hit namespace=genius fn=fetch_lyrics key=1f90e2aaac
+api_cache miss namespace=genius fn=fetch_lyrics key=ea7c0d0103
+api_cache hit namespace=genius fn=fetch_lyrics key=ad0cd4f841
+genius client reinit token_present=True token_prefix=tdZNtx
+api_cache miss namespace=genius fn=fetch_lyrics key=7d21038f4d
+api_cache miss namespace=genius fn=fetch_lyrics key=4d24904670
+genius search start title='Love Theme from Kiss' artist='Kiss'
+genius client reinit token_present=True token_prefix=tdZNtx
+api_cache miss namespace=genius fn=fetch_lyrics key=e80d570fc3
+genius client reinit token_present=True token_prefix=tdZNtx
+api_cache miss namespace=genius fn=fetch_lyrics key=7200cfe01d
+genius search start title='Crazy' artist='Seal'
+genius client reinit token_present=True token_prefix=tdZNtx
+genius search start title='Kiss from a Rose' artist='Seal'
+genius client reinit token_present=True token_prefix=tdZNtx
+genius search start title="Love's Divine" artist='Seal'
+genius search start title='Fly Like An Eagle' artist='Seal'
+genius search not_found title='Love Theme from Kiss' artist='Kiss'
+api_cache miss namespace=genius fn=fetch_lyrics key=deed465bf5
+genius search start title='Prayer for the Dying' artist='Seal'
+genius search hit title='Prayer for the Dying' artist='Seal' matched_title='Prayer for the Dying' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=c3fc1f6db1
+genius search start title='Killer' artist='Seal'
+genius search hit title='Fly Like An Eagle' artist='Seal' matched_title='Fly Like an Eagle' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=ad6f9d43ab
+genius search start title='Amazing' artist='Seal'
+genius search hit title="Love's Divine" artist='Seal' matched_title='Love’s Divine' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=4318215785
+genius search start title='Stand by Me' artist='Seal'
+genius search hit title='Kiss from a Rose' artist='Seal' matched_title='Kiss from a Rose' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=a88383bb27
+genius search start title="Don't Cry" artist='Seal'
+genius search hit title='Crazy' artist='Seal' matched_title='Crazy' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=2e8d993041
+genius search start title='Future Love Paradise' artist='Seal'
+genius search hit title='Killer' artist='Seal' matched_title='Killer' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=1126357518
+genius search start title="It's a Man's Man's Man's World" artist='Seal'
+genius search hit title='Amazing' artist='Seal' matched_title='Amazing' matched_artist='Seal'
+genius search hit title="Don't Cry" artist='Seal' matched_title='Don’t Cry' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=6842731cde
+genius search start title='Waiting for You' artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=fa7059aef4
+genius search start title='Get It Together' artist='Seal'
+genius search hit title='Stand by Me' artist='Seal' matched_title='Stand By Me' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=6faecc39f0
+genius search start title='Bring It On' artist='Seal'
+genius search hit title='Future Love Paradise' artist='Seal' matched_title='Future Love Paradise' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=90ea93236e
+genius search start title='A Change Is Gonna Come' artist='Seal'
+genius search hit title="It's a Man's Man's Man's World" artist='Seal' matched_title='It’s a Man’s Man’s Man’s World' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=ebe6412822
+genius search start title='Crazy - 2022 Remaster' artist='Seal'
+genius search hit title='Bring It On' artist='Seal' matched_title='Bring it On' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=11ae21aacf
+genius search start title='Newborn Friend' artist='Seal'
+genius search hit title='Get It Together' artist='Seal' matched_title='Get It Together' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=3e005ac410
+genius search start title='Dreaming in Metaphors' artist='Seal'
+genius search hit title='Waiting for You' artist='Seal' matched_title='Waiting for You' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=ffbf1d8b37
+genius search start title='People Asking Why' artist='Seal'
+genius search hit title='A Change Is Gonna Come' artist='Seal' matched_title='A Change Is Gonna Come' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=0ee95cc8bf
+genius search start title="I Can't Stand the Rain" artist='Seal'
+genius search hit title='Newborn Friend' artist='Seal' matched_title='Newborn Friend' matched_artist='Seal'
+genius search hit title='Crazy - 2022 Remaster' artist='Seal' matched_title='Mr. Jones (2021 Remaster)' matched_artist='Steve Gibbons Band'
+api_cache miss namespace=genius fn=fetch_lyrics key=86bbbfc0c7
+genius search start title="I'm Alive" artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=02f6bcd21f
+genius search start title='If I Could' artist='Seal'
+genius search hit title='Dreaming in Metaphors' artist='Seal' matched_title='Dreaming in Metaphors' matched_artist='Seal'
+genius search hit title='People Asking Why' artist='Seal' matched_title='People Asking Why' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=feb7573f97
+genius search start title='Human Beings' artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=43d75576e8
+genius search start title="If You Don't Know Me by Now" artist='Seal'
+genius search hit title="I Can't Stand the Rain" artist='Seal' matched_title='I Can’t Stand the Rain' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=8049fcd678
+genius search start title='Fast Changes' artist='Seal'
+genius search hit title='If I Could' artist='Seal' matched_title='If I Could' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=a432ece2cc
+genius search start title='The Beginning' artist='Seal'
+genius search hit title='Human Beings' artist='Seal' matched_title='Human Beings' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=10c030d1dc
+genius search start title='Violet' artist='Seal'
+genius search hit title="If You Don't Know Me by Now" artist='Seal' matched_title='If You Don’t Know Me By Now' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=108574f7c5
+genius search start title='My Vision' artist='Seal'
+genius search hit title="I'm Alive" artist='Seal' matched_title='I’m Alive' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=7bf1faa173
+genius search start title="Let's Stay Together" artist='Seal'
+genius search hit title='Fast Changes' artist='Seal' matched_title='Fast Changes' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=cf03dd4963
+genius search start title='Free' artist='Seal'
+genius search hit title='Violet' artist='Seal' matched_title='Violet' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=9e10fcb60d
+genius search start title='Bring It On (reprise)' artist='Seal'
+genius search hit title='My Vision' artist='Seal' matched_title='My Vision' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=424dde6446
+genius search start title='Walk on By' artist='Seal'
+genius search hit title='The Beginning' artist='Seal' matched_title='The Beginning' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=80bfb52c23
+genius search start title="I've Been Loving You Too Long" artist='Seal'
+genius search hit title="Let's Stay Together" artist='Seal' matched_title='Let’s Stay Together' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=0675983f72
+genius search start title='Deep Water' artist='Seal'
+genius search hit title='Free' artist='Seal' matched_title='Free' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=a2f4f70dda
+genius search start title='The Right Life' artist='Seal'
+genius search hit title='Bring It On (reprise)' artist='Seal' matched_title='Bring It On (Reprise)' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=13cb59a2d1
+genius search start title='Whirlpool' artist='Seal'
+genius search hit title='Walk on By' artist='Seal' matched_title='Walk On By' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=235562c3ee
+genius search start title='Kiss From A Rose - Acoustic Version' artist='Seal'
+genius search hit title='Deep Water' artist='Seal' matched_title='Deep Water' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=103ecd1a2c
+genius search start title='Knock on Wood' artist='Seal'
+genius search hit title="I've Been Loving You Too Long" artist='Seal' matched_title='I’ve Been Loving You Too Long' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=e797c14c13
+genius search start title='My Funny Valentine' artist='Seal'
+genius search hit title='The Right Life' artist='Seal' matched_title='The Right Life' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=8d94dbee36
+genius search start title='People Get Ready' artist='Seal'
+genius search hit title='Whirlpool' artist='Seal' matched_title='Whirlpool' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=bb5d5d2cce
+genius search start title='Touch' artist='Seal'
+genius search hit title='Knock on Wood' artist='Seal' matched_title='Knock On Wood' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=ab00dd678b
+genius search start title='Wishing on a Star' artist='Seal'
+genius search hit title='Kiss From A Rose - Acoustic Version' artist='Seal' matched_title='October 2024 Singles Release Calendar' matched_artist='Genius'
+api_cache miss namespace=genius fn=fetch_lyrics key=aac0fe9449
+genius search start title='Show Me' artist='Seal'
+genius search hit title='My Funny Valentine' artist='Seal' matched_title='My Funny Valentine' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=2cbbf35b76
+genius search start title='Kiss From a Rose - Acoustic' artist='Seal'
+genius search hit title='People Get Ready' artist='Seal' matched_title='People Get Ready' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=2093ed19b5
+genius search start title="It's Alright" artist='Seal'
+genius search hit title='Touch' artist='Seal' matched_title='Touch' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=70fab50121
+genius search start title='Wild' artist='Seal'
+genius search hit title='Wishing on a Star' artist='Seal' matched_title='Wishing on a Star' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=b4e645e952
+genius search start title='Rolling' artist='Seal'
+genius search hit title='Show Me' artist='Seal' matched_title='Show Me' matched_artist='Lil Uzi Vert'
+api_cache miss namespace=genius fn=fetch_lyrics key=e1503418df
+genius search start title='System' artist='Seal'
+genius search hit title="It's Alright" artist='Seal' matched_title='It’s Alright' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=aa42ba6507
+genius search start title="I'm Still in Love With You" artist='Seal'
+genius search hit title='Kiss From a Rose - Acoustic' artist='Seal' matched_title='Kiss from a Rose' matched_artist='Dan Avidan'
+api_cache miss namespace=genius fn=fetch_lyrics key=94c8731cc7
+genius search start title='Secret' artist='Seal'
+genius search hit title='Wild' artist='Seal' matched_title='Wild' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=7cef10beaf
+genius search start title='Colour' artist='Seal'
+genius search hit title='System' artist='Seal' matched_title='System' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=58faa1df73
+genius search start title='Let Me Roll' artist='Seal'
+genius search hit title='Rolling' artist='Seal' matched_title='Rolling' matched_artist='Seal'
+genius search hit title="I'm Still in Love With You" artist='Seal' matched_title='I’m Still In Love with You' matched_artist='Seal'
+genius search hit title='Secret' artist='Seal' matched_title='Secret' matched_artist='Seal'
+genius search hit title='Colour' artist='Seal' matched_title='Colour' matched_artist='Seal'
+genius search hit title='Let Me Roll' artist='Seal' matched_title='Let Me Roll' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=5085f5ec63
+api_cache miss namespace=genius fn=fetch_lyrics key=7ad41c7636
+genius client reinit token_present=True token_prefix=tdZNtx
+api_cache miss namespace=genius fn=fetch_lyrics key=37f8088278
+api_cache miss namespace=genius fn=fetch_lyrics key=2f4d6c0d26
+genius client reinit token_present=True token_prefix=tdZNtx
+genius search start title='Loneliest Star' artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=8a31550a40
+genius client reinit token_present=True token_prefix=tdZNtx
+genius client reinit token_present=True token_prefix=tdZNtx
+genius search start title="Don't Make Me Wait" artist='Seal'
+genius client reinit token_present=True token_prefix=tdZNtx
+genius search start title='Here I Am (Come And Take Me)' artist='Seal'
+genius search start title='Just Like Before' artist='Seal'
+genius search start title='Amazing (Thin White Duke Edit)' artist='Seal'
+genius search hit title='Just Like Before' artist='Seal' matched_title='Just Like Before' matched_artist='Seal'
+genius search hit title='Loneliest Star' artist='Seal' matched_title='Loneliest Star' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=8f5c74afed
+genius search start title="If It's In My Mind, It's On My Face" artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=ea9cf7a829
+genius search start title='Loaded' artist='Seal'
+genius search hit title="Don't Make Me Wait" artist='Seal' matched_title='Don’t Make Me Wait' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=3434146f36
+genius search start title='I Am Your Man' artist='Seal'
+genius search hit title='Amazing (Thin White Duke Edit)' artist='Seal' matched_title='Amazing (Thin White Duke Edit)' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=650618d7e2
+genius search start title='Luck Be A Lady' artist='Seal'
+genius search hit title='Here I Am (Come And Take Me)' artist='Seal' matched_title='Here I Am (Come And Take Me)' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=c555e305ab
+genius search start title="Every Time I'm With You" artist='Seal'
+genius search hit title='I Am Your Man' artist='Seal' matched_title='I Am Your Man' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=1fcc82c961
+genius search start title='Just Like You Said' artist='Seal'
+genius search hit title="Every Time I'm With You" artist='Seal' matched_title='Every Time I’m with You' matched_artist='Seal'
+genius search hit title="If It's In My Mind, It's On My Face" artist='Seal' matched_title='If It’s On My Mind, It’s On My Face' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=7a10ced544
+genius search start title='Lips Like Sugar' artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=0def78637d
+genius search start title='Crazy (Single Mix) - 2022 Remaster' artist='Seal'
+genius search hit title='Loaded' artist='Seal' matched_title='Loaded' matched_artist='Lil Uzi Vert'
+api_cache miss namespace=genius fn=fetch_lyrics key=c4f5c2a1af
+genius search start title='Tinsel Town' artist='Seal'
+genius search hit title='Luck Be A Lady' artist='Seal' matched_title='Luck Be A Lady' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=9023411579
+genius search start title='Dumb' artist='Seal'
+genius search hit title='Crazy (Single Mix) - 2022 Remaster' artist='Seal' matched_title='The Second Coming of Jesus Christ [Interlude]' matched_artist='Colson Lin'
+api_cache miss namespace=genius fn=fetch_lyrics key=94e7729dfd
+genius search start title='Kiss Form A Rose' artist='Seal'
+genius search hit title='Lips Like Sugar' artist='Seal' matched_title='Lips Like Sugar' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=757d7d7d1d
+genius search start title='Immaculate' artist='Seal'
+genius search hit title='Tinsel Town' artist='Seal' matched_title='Tinsel Town' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=43d1e59e11
+genius search start title='Latest Craze' artist='Seal'
+genius search hit title='Just Like You Said' artist='Seal' matched_title='Just Like You Said' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=4929f54fa2
+genius search start title="Where There's Gold" artist='Seal'
+genius search hit title='Dumb' artist='Seal' matched_title='Dumb' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=32eab8a9e2
+genius search start title='State of Grace' artist='Seal'
+genius search hit title='Latest Craze' artist='Seal' matched_title='Latest Craze' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=ad56501224
+genius search start title='Lean on Me' artist='Seal'
+genius search hit title="Where There's Gold" artist='Seal' matched_title='Where There’s Gold' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=d076c1d39b
+genius search start title='Lost My Faith' artist='Seal'
+genius search hit title='Kiss Form A Rose' artist='Seal' matched_title='Let It Ride' matched_artist='Toothgrinder'
+api_cache miss namespace=genius fn=fetch_lyrics key=5747710ad0
+genius search start title="I'll Be Around" artist='Seal'
+genius search hit title='State of Grace' artist='Seal' matched_title='State Of Grace' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=7c4024ee99
+genius search start title='Do You Ever' artist='Seal'
+genius search hit title='Lean on Me' artist='Seal' matched_title='Lean on Me' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=90b5e3ba7e
+genius search start title='Weight of My Mistakes' artist='Seal'
+genius search hit title='Lost My Faith' artist='Seal' matched_title='Lost My Faith' matched_artist='Seal'
+genius search hit title='Immaculate' artist='Seal' matched_title='Immaculate' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=4cf2070679
+genius search start title="Love Don't Live Here Anymore" artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=923026470c
+genius search start title='Get It Together (reprise)' artist='Seal'
+genius search hit title="I'll Be Around" artist='Seal' matched_title='I’ll Be Around' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=2c5618c4e9
+genius search start title="What's Going On" artist='Seal'
+genius search hit title='Do You Ever' artist='Seal' matched_title='Do You Ever' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=253f60851b
+genius search start title="If I'm Any Closer" artist='Seal'
+genius search hit title='Get It Together (reprise)' artist='Seal' matched_title='Get It Together (Reprise)' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=325f1dedb9
+genius search start title='Ooh Baby Baby' artist='Seal'
+genius search hit title="If I'm Any Closer" artist='Seal' matched_title='If I’m Any Closer' matched_artist='Seal'
+genius search hit title="Love Don't Live Here Anymore" artist='Seal' matched_title='Love Don’t Live Here Anymore' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=e49c098611
+genius search start title='Love T.K.O.' artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=9ed5e8522c
+genius search start title='Princess' artist='Seal'
+genius search hit title="What's Going On" artist='Seal' matched_title='What’s Going On' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=f76fe9c12e
+genius search start title='When a Man Is Wrong' artist='Seal'
+genius search hit title='Weight of My Mistakes' artist='Seal' matched_title='Weight of My Mistakes' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=a23561313f
+genius search start title='This Could Be Heaven' artist='Seal'
+genius search hit title='Love T.K.O.' artist='Seal' matched_title='Love T.K.O.' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=d88fe3bbf4
+genius search start title='Crazy (acoustic)' artist='Seal'
+genius search hit title='When a Man Is Wrong' artist='Seal' matched_title='When A Man Is Wrong' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=2964428b4c
+genius search start title='Still Love Remains' artist='Seal'
+genius search hit title='Princess' artist='Seal' matched_title='Princess' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=b4ff7a2938
+genius search start title='Excerpt From' artist='Seal'
+genius search hit title='Ooh Baby Baby' artist='Seal' matched_title='Ooh Baby Baby' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=c8e9a499c2
+genius search start title='Daylight Saving' artist='Seal'
+genius search hit title='This Could Be Heaven' artist='Seal' matched_title='This Could Be Heaven' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=b67d01ea58
+genius search start title='Silence' artist='Seal'
+genius search hit title='Crazy (acoustic)' artist='Seal' matched_title='Crazy (Acoustic Version)' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=37b2483f50
+genius search start title='No Easy Way' artist='Seal'
+genius search hit title='Still Love Remains' artist='Seal' matched_title='Still Love Remains' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=a08edf6089
+genius search start title='You Get Me' artist='Seal'
+genius search hit title='Excerpt From' artist='Seal' matched_title='Excerpt From' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=500722a204
+genius search start title='Best of Me' artist='Seal'
+genius search hit title='Daylight Saving' artist='Seal' matched_title='Daylight Savings' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=aa43f8865b
+genius search start title='This Christmas' artist='Seal'
+genius search hit title='Silence' artist='Seal' matched_title='Silence' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=e072bea456
+genius search start title='Life On The Dancefloor' artist='Seal'
+genius search hit title='No Easy Way' artist='Seal' matched_title='No Easy Way' matched_artist='Seal'
+api_cache miss namespace=genius fn=fetch_lyrics key=7c0d6b179a
+genius search start title='Back Stabbers' artist='Seal'
+genius search hit title='You Get Me' artist='Seal' matched_title='You Get Me' matched_artist='Seal'
+genius search hit title='This Christmas' artist='Seal' matched_title='This Christmas' matched_artist='Elijah Blake'
+genius search hit title='Best of Me' artist='Seal' matched_title='Best of Me' matched_artist='Seal'
+genius search hit title='Life On The Dancefloor' artist='Seal' matched_title='Life On The Dance Floor' matched_artist='Seal'
+genius search hit title='Back Stabbers' artist='Seal' matched_title='Back Stabbers' matched_artist='Seal'
+  Downloading lyrics ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 328/245 100% 0:00:37 ✓95 ✗150 workers=5
+Lyrics download complete. downloaded=95 failed=150 not_found=67 rate_limit_events=0 hard_limited=False
+Report: /home/thadeu/projects/afonse/data/reports/lyrics_20260321_023806.json
+Indexing vocabulary for 103 songs
+  indexed=100
+Vocabulary index complete. indexed=103 songs, 5117 word entries
+Report: /home/thadeu/projects/afonse/data/reports/vocabulary_20260321_023918.json
+Generating embeddings for 95 songs
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 7518.64it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+  embedded 32/95
+  embedded 64/95
+  embedded 95/95
+Embeddings complete. FAISS index saved to data/embeddings.index
+Report: /home/thadeu/projects/afonse/data/reports/embeddings_20260321_023920.json
+Update complete.
