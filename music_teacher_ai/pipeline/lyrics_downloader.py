@@ -173,6 +173,12 @@ def download_lyrics(initial_workers: int = 5) -> None:
                         )
                     elif status == "not_found":
                         fail_batch.append((song, "Lyrics not found on Genius"))
+                        report.add_error(
+                            song_id=song.id,
+                            title=song.title,
+                            artist=artist_map[song.id],
+                            error="not_found",
+                        )
                         not_found += 1
                     else:
                         fail_batch.append((song, data))
@@ -273,6 +279,53 @@ def download_lyrics(initial_workers: int = 5) -> None:
     report.set("rate_limit_events", rate_limit_events)
     report.set("hard_limited", int(hard_limited))
     report.set("final_workers", workers)
+
+    # Root-cause diagnosis — written to the report so the user can understand
+    # a bulk failure without having to read through individual error entries.
+    if total > 0:
+        not_found_rate = not_found / total
+        error_rate = (failed - not_found) / total if failed > not_found else 0
+
+        if downloaded == 0 and not_found == total:
+            from music_teacher_ai.core.lyrics_client import _get_token
+            token_present = bool(_get_token())
+            if token_present:
+                report.add_event(
+                    "diagnosis",
+                    cause="all_not_found",
+                    message=(
+                        "100% of songs returned 'not found'. "
+                        "Possible causes: (1) API cache poisoned from a previous run without a valid token "
+                        "— run: music-teacher doctor --clear-cache null; "
+                        "(2) Genius token is set but invalid — verify at genius.com/api-clients; "
+                        "(3) All songs genuinely absent from Genius (unlikely at this scale)."
+                    ),
+                )
+            else:
+                report.add_event(
+                    "diagnosis",
+                    cause="missing_token",
+                    message="GENIUS_ACCESS_TOKEN is not set. No API calls were made.",
+                )
+        elif not_found_rate > 0.5:
+            report.add_event(
+                "diagnosis",
+                cause="high_not_found_rate",
+                message=(
+                    f"{not_found_rate:.0%} of songs not found on Genius. "
+                    "Check that artist names match Genius spelling, or that the Genius token is valid."
+                ),
+            )
+        elif error_rate > 0.3:
+            report.add_event(
+                "diagnosis",
+                cause="high_error_rate",
+                message=(
+                    f"{error_rate:.0%} of songs failed with API errors. "
+                    "Check the errors list in this report for details."
+                ),
+            )
+
     report_path = report.save()
 
     console.print(
