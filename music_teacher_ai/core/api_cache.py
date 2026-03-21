@@ -35,17 +35,18 @@ def cache_stats(namespace: str | None = None) -> dict:
     if not root.exists():
         return stats
     for path in root.rglob("*.json"):
-        ns = path.parent.parent.name  # …/genius/ab/abc123.json → "genius"
+        try:
+            with path.open() as f:
+                envelope = json.load(f)
+        except Exception:
+            continue
+        ns = envelope.get("namespace", "unknown")
         if namespace and ns != namespace:
             continue
         entry = stats.setdefault(ns, {"total": 0, "null_results": 0})
         entry["total"] += 1
-        try:
-            with path.open() as f:
-                if json.load(f).get("result") is None:
-                    entry["null_results"] += 1
-        except Exception:
-            pass
+        if envelope.get("result") is None:
+            entry["null_results"] += 1
     return stats
 
 
@@ -71,16 +72,17 @@ def clear_null_cache(namespace: str | None = None) -> int:
         return 0
     deleted = 0
     for path in list(root.rglob("*.json")):
-        ns = path.parent.parent.name
-        if namespace and ns != namespace:
-            continue
         try:
             with path.open() as f:
-                if json.load(f).get("result") is None:
-                    path.unlink(missing_ok=True)
-                    deleted += 1
+                envelope = json.load(f)
         except Exception:
-            pass
+            continue
+        ns = envelope.get("namespace", "unknown")
+        if namespace and ns != namespace:
+            continue
+        if envelope.get("result") is None:
+            path.unlink(missing_ok=True)
+            deleted += 1
     return deleted
 
 
@@ -131,7 +133,7 @@ def cached_api(
 
                 path.parent.mkdir(parents=True, exist_ok=True)
                 with path.open("w") as f:
-                    json.dump({"result": stored}, f)
+                    json.dump({"namespace": namespace, "result": stored}, f)
 
             return result
 

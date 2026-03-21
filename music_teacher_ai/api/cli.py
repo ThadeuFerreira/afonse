@@ -768,27 +768,36 @@ def doctor(
     # ------------------------------------------------------------------
     # 7. Database
     # ------------------------------------------------------------------
-    with check("Database: schema creation"):
+    with check("Database: schema creation + insert/query"):
+        import importlib
+        import os as _os
+
+        import music_teacher_ai.config.settings as _s
+        import music_teacher_ai.database.sqlite as _db
+
+        _orig_db_path = _os.environ.get("DATABASE_PATH")
         with tempfile.TemporaryDirectory() as tmp:
-            import os as _os
-            _os.environ["DATABASE_PATH"] = str(Path(tmp) / "test.db")
-            import importlib
-
-            import music_teacher_ai.config.settings as _s
-            import music_teacher_ai.database.sqlite as _db
-            importlib.reload(_s)
-            importlib.reload(_db)
-            _db.create_db()
-
-    with check("Database: insert and query"):
-        from music_teacher_ai.database.models import Artist
-        from music_teacher_ai.database.sqlite import get_session
-        with get_session() as s:
-            a = Artist(name="__smoke_test__")
-            s.add(a)
-            s.commit()
-            fetched = s.get(Artist, a.id)
-            assert fetched.name == "__smoke_test__"
+            try:
+                _os.environ["DATABASE_PATH"] = str(Path(tmp) / "test.db")
+                importlib.reload(_s)
+                importlib.reload(_db)
+                _db.create_db()
+                from music_teacher_ai.database.models import Artist as _Artist
+                with _db.get_session() as s:
+                    a = _Artist(name="__smoke_test__")
+                    s.add(a)
+                    s.commit()
+                    fetched = s.get(_Artist, a.id)
+                    assert fetched and fetched.name == "__smoke_test__"
+            finally:
+                # Always restore the real DATABASE_PATH so subsequent code
+                # does not point at the now-deleted temp directory.
+                if _orig_db_path is None:
+                    _os.environ.pop("DATABASE_PATH", None)
+                else:
+                    _os.environ["DATABASE_PATH"] = _orig_db_path
+                importlib.reload(_s)
+                importlib.reload(_db)
 
     # ------------------------------------------------------------------
     # 8. Embedding model
