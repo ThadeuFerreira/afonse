@@ -194,6 +194,8 @@ def rebuild_embeddings():
     generate_embeddings(rebuild=True)
 
 
+
+
 @app.command()
 def search(
     word: Optional[str] = typer.Option(None, help="Keyword to search in lyrics."),
@@ -593,18 +595,70 @@ def doctor(
     skip_spotify: bool = typer.Option(False, "--skip-spotify", help="Skip Spotify API check."),
     skip_genius: bool = typer.Option(False, "--skip-genius", help="Skip Genius API check."),
     skip_billboard: bool = typer.Option(False, "--skip-billboard", help="Skip Billboard check."),
+    clear_cache: Optional[str] = typer.Option(
+        None, "--clear-cache",
+        help="Delete cached API responses: 'all', 'genius', 'spotify', 'lastfm', or 'null' (null-result entries only).",
+    ),
 ):
     """
     Run a health check on every system component and report pass/fail.
 
-    Checks credentials, external APIs, local model, database, and FAISS index.
-    No data is written to the real database.
+    Checks credentials, API cache, external APIs, local model, database, and FAISS index.
+    Use --clear-cache null to fix the common issue where a missing Genius token
+    caused all songs to be cached as 'not found'.
     """
     import os
     import tempfile
     from pathlib import Path
 
+    from rich.panel import Panel
     from rich.table import Table as RichTable
+
+    from music_teacher_ai.core.api_cache import (
+        cache_stats,
+        clear_null_cache,
+    )
+    from music_teacher_ai.core.api_cache import (
+        clear_cache as do_clear_cache,
+    )
+
+    # ── Handle --clear-cache first ───────────────────────────────────────────
+    if clear_cache:
+        if clear_cache == "null":
+            n = clear_null_cache()
+            console.print(f"[green]Deleted {n} null-result cache entries.[/green]")
+        elif clear_cache == "all":
+            n = do_clear_cache()
+            console.print(f"[green]Deleted {n} cache entries (all namespaces).[/green]")
+        else:
+            n = do_clear_cache(namespace=clear_cache)
+            console.print(f"[green]Deleted {n} '{clear_cache}' cache entries.[/green]")
+        return
+
+    # ── API cache quick summary ───────────────────────────────────────────────
+    stats = cache_stats()
+    cache_table = RichTable(title="API Cache", show_lines=False)
+    cache_table.add_column("Namespace", style="cyan")
+    cache_table.add_column("Entries", justify="right")
+    cache_table.add_column("Null (not-found)", justify="right")
+    cache_table.add_column("Note")
+    total_null = 0
+    for ns, s in sorted(stats.items()):
+        null_n = s["null_results"]
+        total_null += null_n
+        note = "[yellow]run --clear-cache null to retry[/yellow]" if null_n > 50 else ""
+        cache_table.add_row(ns, str(s["total"]), str(null_n), note)
+    if not stats:
+        cache_table.add_row("[dim]empty[/dim]", "0", "0", "")
+    console.print(cache_table)
+
+    if total_null > 50:
+        console.print(Panel(
+            f"[yellow]{total_null} null cache entries detected.[/yellow]\n"
+            "This usually means lyrics were fetched without a valid Genius token.\n"
+            "Fix: [cyan]music-teacher doctor --clear-cache null[/cyan]",
+            border_style="yellow", expand=False,
+        ))
 
     results: list[tuple[str, str, str]] = []  # (component, status, detail)
 
