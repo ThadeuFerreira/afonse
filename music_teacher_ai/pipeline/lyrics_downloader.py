@@ -291,39 +291,35 @@ def download_lyrics(initial_workers: int = 5) -> None:
             token_present = bool(_get_token())
             if token_present:
                 report.add_event(
-                    "diagnosis",
-                    cause="all_not_found",
-                    message=(
+                    (
                         "100% of songs returned 'not found'. "
-                        "Possible causes: (1) API cache poisoned from a previous run without a valid token "
-                        "— run: music-teacher doctor --clear-cache null; "
+                        "Possible causes: (1) API cache poisoned from a previous run "
+                        "without a valid token — run: music-teacher doctor --clear-cache null; "
                         "(2) Genius token is set but invalid — verify at genius.com/api-clients; "
                         "(3) All songs genuinely absent from Genius (unlikely at this scale)."
                     ),
+                    kind="diagnosis",
+                    cause="all_not_found",
                 )
             else:
                 report.add_event(
-                    "diagnosis",
+                    "GENIUS_ACCESS_TOKEN is not set. No API calls were made.",
+                    kind="diagnosis",
                     cause="missing_token",
-                    message="GENIUS_ACCESS_TOKEN is not set. No API calls were made.",
                 )
         elif not_found_rate > 0.5:
             report.add_event(
-                "diagnosis",
+                f"{not_found_rate:.0%} of songs not found on Genius. "
+                "Check that artist names match Genius spelling, or that the Genius token is valid.",
+                kind="diagnosis",
                 cause="high_not_found_rate",
-                message=(
-                    f"{not_found_rate:.0%} of songs not found on Genius. "
-                    "Check that artist names match Genius spelling, or that the Genius token is valid."
-                ),
             )
         elif error_rate > 0.3:
             report.add_event(
-                "diagnosis",
+                f"{error_rate:.0%} of songs failed with API errors. "
+                "Check the errors list in this report for details.",
+                kind="diagnosis",
                 cause="high_error_rate",
-                message=(
-                    f"{error_rate:.0%} of songs failed with API errors. "
-                    "Check the errors list in this report for details."
-                ),
             )
 
     report_path = report.save()
