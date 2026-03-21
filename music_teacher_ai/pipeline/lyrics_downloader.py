@@ -99,6 +99,7 @@ def download_lyrics(initial_workers: int = 5) -> None:
             artist_map[song.id] = artist.name if artist else ""
 
     pending_songs = songs
+    debug_not_found_samples: list[dict[str, str]] = []
     total = len(pending_songs)
     console.print(
         f"[cyan]Downloading lyrics for {total} songs "
@@ -173,6 +174,12 @@ def download_lyrics(initial_workers: int = 5) -> None:
                         )
                     elif status == "not_found":
                         fail_batch.append((song, "Lyrics not found on Genius"))
+                        if len(debug_not_found_samples) < 25:
+                            debug_not_found_samples.append({
+                                "song_id": str(song.id),
+                                "title": song.title,
+                                "artist": artist_map[song.id],
+                            })
                         report.add_error(
                             song_id=song.id,
                             title=song.title,
@@ -279,6 +286,13 @@ def download_lyrics(initial_workers: int = 5) -> None:
     report.set("rate_limit_events", rate_limit_events)
     report.set("hard_limited", int(hard_limited))
     report.set("final_workers", workers)
+    if debug_not_found_samples:
+        report.add_event(
+            "not_found_samples",
+            kind="debug",
+            count=len(debug_not_found_samples),
+            samples=debug_not_found_samples,
+        )
 
     # Root-cause diagnosis — written to the report so the user can understand
     # a bulk failure without having to read through individual error entries.

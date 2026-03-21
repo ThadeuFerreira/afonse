@@ -11,11 +11,19 @@ By default None results are also NOT cached (use cache_none=True to opt in).
 import dataclasses
 import hashlib
 import json
+import logging
+import os
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 from music_teacher_ai.config.settings import API_CACHE_DIR
+
+logger = logging.getLogger(__name__)
+
+
+def _debug_enabled() -> bool:
+    return os.getenv("DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _make_key(namespace: str, fn_name: str, args: tuple, kwargs: dict) -> str:
@@ -113,6 +121,13 @@ def cached_api(
             path = _cache_path(key)
 
             if path.exists():
+                if _debug_enabled():
+                    logger.warning(
+                        "api_cache hit namespace=%s fn=%s key=%s",
+                        namespace,
+                        fn.__name__,
+                        key[:10],
+                    )
                 with path.open() as f:
                     envelope = json.load(f)
                 raw = envelope["result"]
@@ -120,6 +135,13 @@ def cached_api(
                     return None
                 return from_cache(raw) if from_cache else raw
 
+            if _debug_enabled():
+                logger.warning(
+                    "api_cache miss namespace=%s fn=%s key=%s",
+                    namespace,
+                    fn.__name__,
+                    key[:10],
+                )
             result = fn(*args, **kwargs)
 
             # Only persist to disk when there is something worth caching.
