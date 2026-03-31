@@ -8,4 +8,3 @@ class ValidationError(AppError):
 
 class NotFoundError(AppError):
     """Raised when requested entity is not found."""
-

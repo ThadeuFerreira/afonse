@@ -39,9 +39,7 @@ def _get_or_create_artist(session, name: str) -> Artist:
 
 def _get_or_create_song(session, entry: ChartEntry, artist: Artist) -> Song:
     song = session.exec(
-        select(Song)
-        .where(Song.title == entry.title)
-        .where(Song.artist_id == artist.id)
+        select(Song).where(Song.title == entry.title).where(Song.artist_id == artist.id)
     ).first()
     if not song:
         song = Song(
@@ -140,22 +138,26 @@ def ingest_charts(
                         .where(Chart.date == entry.date)
                     ).first()
                     if not existing:
-                        session.add(Chart(
-                            song_id=song.id,
-                            chart_name="hot-100",
-                            rank=entry.rank,
-                            date=entry.date,
-                        ))
+                        session.add(
+                            Chart(
+                                song_id=song.id,
+                                chart_name="hot-100",
+                                rank=entry.rank,
+                                date=entry.date,
+                            )
+                        )
                         total_chart_entries += 1
 
                     total_songs += 1
                 except Exception as exc:
-                    session.add(IngestionFailure(
-                        stage="charts",
-                        error_message=str(exc),
-                        raw_title=entry.title,
-                        raw_artist=entry.artist,
-                    ))
+                    session.add(
+                        IngestionFailure(
+                            stage="charts",
+                            error_message=str(exc),
+                            raw_title=entry.title,
+                            raw_artist=entry.artist,
+                        )
+                    )
 
         session.commit()
 

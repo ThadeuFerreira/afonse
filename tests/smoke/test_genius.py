@@ -7,6 +7,7 @@ Verifies:
 - Word count is non-trivial (real lyrics, not empty/stub)
 - fetch_lyrics returns None gracefully for unknown songs
 """
+
 from tests.smoke.conftest import requires_genius
 
 

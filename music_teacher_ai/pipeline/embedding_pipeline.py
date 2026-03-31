@@ -13,6 +13,7 @@ console = Console()
 
 def _load_model():
     from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(EMBEDDING_MODEL)
 
 
@@ -27,6 +28,7 @@ def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
     with get_session() as session:
         if rebuild:
             from sqlmodel import delete
+
             session.exec(delete(Embedding))
             session.commit()
             # Also remove the FAISS file so _load_or_create_index() starts fresh
@@ -34,9 +36,7 @@ def generate_embeddings(batch_size: int = 32, rebuild: bool = False) -> None:
                 FAISS_INDEX_PATH.unlink()
             embedded_ids: set[int] = set()
         else:
-            embedded_ids = {
-                row for row in session.exec(select(Embedding.song_id)).all()
-            }
+            embedded_ids = {row for row in session.exec(select(Embedding.song_id)).all()}
 
         lyrics_rows = session.exec(select(Lyrics)).all()
         pending = [row for row in lyrics_rows if row.song_id not in embedded_ids]

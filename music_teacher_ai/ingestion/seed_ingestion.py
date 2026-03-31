@@ -9,6 +9,7 @@ MusicBrainz enrichment.
 Demo songs (metadata_source='demo') are upgraded to 'lyrics_only' and their
 hardcoded lyrics are deleted so download_lyrics() will fetch real ones.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,18 +40,14 @@ def seed_songs() -> dict[str, int]:
             year: int | None = entry.get("year")
 
             # Upsert artist
-            artist = session.exec(
-                select(Artist).where(Artist.name == artist_name)
-            ).first()
+            artist = session.exec(select(Artist).where(Artist.name == artist_name)).first()
             if not artist:
                 artist = Artist(name=artist_name)
                 session.add(artist)
                 session.flush()  # populate artist.id
 
             existing = session.exec(
-                select(Song)
-                .where(Song.title == title)
-                .where(Song.artist_id == artist.id)
+                select(Song).where(Song.title == title).where(Song.artist_id == artist.id)
             ).first()
 
             if existing:
@@ -61,9 +58,7 @@ def seed_songs() -> dict[str, int]:
                         existing.release_year = year
                     session.add(existing)
                     # Remove hardcoded lyrics (word_count is None on demo lyrics)
-                    lyr = session.exec(
-                        select(Lyrics).where(Lyrics.song_id == existing.id)
-                    ).first()
+                    lyr = session.exec(select(Lyrics).where(Lyrics.song_id == existing.id)).first()
                     if lyr is not None and lyr.word_count is None:
                         session.delete(lyr)
                     upgraded += 1
@@ -71,12 +66,14 @@ def seed_songs() -> dict[str, int]:
                     skipped += 1
                 continue
 
-            session.add(Song(
-                title=title,
-                artist_id=artist.id,
-                release_year=year,
-                metadata_source="lyrics_only",
-            ))
+            session.add(
+                Song(
+                    title=title,
+                    artist_id=artist.id,
+                    release_year=year,
+                    metadata_source="lyrics_only",
+                )
+            )
             inserted += 1
 
         session.commit()

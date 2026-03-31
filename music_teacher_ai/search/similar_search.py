@@ -6,6 +6,7 @@ Three query modes:
   - find_similar_by_title(title, artist, top_k, ...)  → look up song, then same
   - find_similar_by_text(text, top_k, min_score)      → encode text on-the-fly
 """
+
 import faiss
 import numpy as np
 from sqlmodel import select
@@ -18,6 +19,7 @@ from music_teacher_ai.search.semantic_search import _faiss_ids_to_songs
 
 def _load_model():
     from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(EMBEDDING_MODEL)
 
 
@@ -49,11 +51,11 @@ def find_similar_by_song(
 ) -> list[dict]:
     """Find songs whose lyrics are semantically similar to the given song."""
     with get_session() as session:
-        emb = session.exec(
-            select(Embedding).where(Embedding.song_id == song_id)
-        ).first()
+        emb = session.exec(select(Embedding).where(Embedding.song_id == song_id)).first()
         if not emb:
-            raise ValueError(f"No embedding found for song_id={song_id}. Run the embedding pipeline first.")
+            raise ValueError(
+                f"No embedding found for song_id={song_id}. Run the embedding pipeline first."
+            )
         vec = np.frombuffer(emb.embedding_vector, dtype=np.float32).copy()
 
     results = _search(vec, top_k, exclude_song_id=song_id)

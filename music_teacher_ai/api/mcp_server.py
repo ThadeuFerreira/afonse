@@ -4,6 +4,7 @@ MCP (Model Context Protocol) server exposing Music Teacher AI tools to AI agents
 Run with:
     python -m music_teacher_ai.api.mcp_server
 """
+
 import json
 from typing import Any, Callable
 
@@ -107,11 +108,20 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "song_id": {"type": "integer", "description": "Song ID to find similar songs for"},
-                "song_title": {"type": "string", "description": "Song title to match (partial match supported)"},
+                "song_title": {
+                    "type": "string",
+                    "description": "Song title to match (partial match supported)",
+                },
                 "artist": {"type": "string", "description": "Artist filter when using song_title"},
-                "text": {"type": "string", "description": "Lyric fragment or theme, e.g. 'dreaming about freedom'"},
+                "text": {
+                    "type": "string",
+                    "description": "Lyric fragment or theme, e.g. 'dreaming about freedom'",
+                },
                 "top_k": {"type": "integer", "description": "Number of results (default 10)"},
-                "min_score": {"type": "number", "description": "Minimum similarity score 0.0–1.0 (default 0.0)"},
+                "min_score": {
+                    "type": "number",
+                    "description": "Minimum similarity score 0.0–1.0 (default 0.0)",
+                },
             },
         },
     },
@@ -154,7 +164,10 @@ TOOLS = [
                 "year_max": {"type": "integer"},
                 "artist": {"type": "string"},
                 "genre": {"type": "string"},
-                "semantic_query": {"type": "string", "description": "Theme query e.g. 'songs about hope'"},
+                "semantic_query": {
+                    "type": "string",
+                    "description": "Theme query e.g. 'songs about hope'",
+                },
                 "similar_text": {"type": "string", "description": "Text to find similar songs for"},
                 "similar_song_id": {"type": "integer"},
                 "limit": {"type": "integer", "description": "Max songs (default 20)"},
@@ -204,7 +217,10 @@ TOOLS = [
                 "genre": {"type": "string", "description": "Last.fm genre tag, e.g. 'jazz'"},
                 "artist": {"type": "string", "description": "Artist name to fetch top tracks for"},
                 "year": {"type": "integer", "description": "Release year to search"},
-                "limit": {"type": "integer", "description": "Max new songs to insert (default 100, max 1000)"},
+                "limit": {
+                    "type": "integer",
+                    "description": "Max new songs to insert (default 100, max 1000)",
+                },
             },
         },
     },
@@ -218,8 +234,14 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "song_id": {"type": "integer", "description": "Song database ID"},
-                "num_blanks": {"type": "integer", "description": "Number of blanks to create (default 10, max 30)"},
-                "min_word_length": {"type": "integer", "description": "Minimum word length to blank (default 4)"},
+                "num_blanks": {
+                    "type": "integer",
+                    "description": "Number of blanks to create (default 10, max 30)",
+                },
+                "min_word_length": {
+                    "type": "integer",
+                    "description": "Minimum word length to blank (default 4)",
+                },
             },
             "required": ["song_id"],
         },
@@ -234,7 +256,10 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "song_id": {"type": "integer", "description": "Song database ID"},
-                "min_word_length": {"type": "integer", "description": "Ignore words shorter than this (default 3)"},
+                "min_word_length": {
+                    "type": "integer",
+                    "description": "Ignore words shorter than this (default 3)",
+                },
             },
             "required": ["song_id"],
         },
@@ -263,8 +288,14 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "song_id": {"type": "integer", "description": "Song database ID"},
-                "num_blanks": {"type": "integer", "description": "Number of fill-in-blank gaps (default 10)"},
-                "min_word_length": {"type": "integer", "description": "Minimum word length (default 4)"},
+                "num_blanks": {
+                    "type": "integer",
+                    "description": "Number of fill-in-blank gaps (default 10)",
+                },
+                "min_word_length": {
+                    "type": "integer",
+                    "description": "Minimum word length (default 4)",
+                },
             },
             "required": ["song_id"],
         },
@@ -410,6 +441,7 @@ def _handle_enrich_database(inputs: dict[str, Any]) -> Any:
 def _get_lyrics_for_song(song_id: int) -> tuple[str, str, str]:
     """Return (lyrics_text, song_title, artist_name) or raise ValueError."""
     from music_teacher_ai.database.models import Artist, Lyrics, Song
+
     with get_session() as session:
         lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
         if not lyr:

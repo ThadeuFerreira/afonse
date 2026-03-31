@@ -11,6 +11,7 @@ Each page contains the 100 top-ranked songs for that year as a simple HTML
 table, which pandas.read_html() parses in milliseconds.  With 5 parallel
 workers, a full 1960→today ingest takes seconds instead of hours.
 """
+
 import dataclasses
 import io
 import re
@@ -25,9 +26,7 @@ import requests
 from music_teacher_ai.config.settings import BILLBOARD_START_YEAR
 from music_teacher_ai.core.api_cache import cached_api
 
-_WIKIPEDIA_URL = (
-    "https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_{year}"
-)
+_WIKIPEDIA_URL = "https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_{year}"
 _HEADERS = {"User-Agent": "MusicTeacherAI/0.1 (educational project)"}
 
 # Column-name aliases observed across different Wikipedia year pages.
@@ -67,13 +66,15 @@ def _parse_tables(tables: list, year: int) -> list[ChartEntry]:
             artist = row[artist_col]
             if not isinstance(title, str) or not isinstance(artist, str):
                 continue
-            entries.append(ChartEntry(
-                title=_strip_quotes(title),
-                artist=artist.strip(),
-                rank=rank,
-                year=year,
-                date=date_str,
-            ))
+            entries.append(
+                ChartEntry(
+                    title=_strip_quotes(title),
+                    artist=artist.strip(),
+                    rank=rank,
+                    year=year,
+                    date=date_str,
+                )
+            )
 
         if entries:
             return entries
@@ -101,9 +102,7 @@ def fetch_chart_for_year(
     try:
         tables = pd.read_html(io.StringIO(resp.text))
     except ValueError as exc:
-        raise RuntimeError(
-            f"No tables found on Wikipedia chart page for {year}: {exc}"
-        ) from exc
+        raise RuntimeError(f"No tables found on Wikipedia chart page for {year}: {exc}") from exc
 
     entries = _parse_tables(tables, year)
     if not entries:
@@ -144,10 +143,7 @@ def fetch_all_years_parallel(
     results: dict[int, list[ChartEntry] | Exception] = {}
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        future_to_year = {
-            pool.submit(fetch_chart_for_year, year, limit): year
-            for year in years
-        }
+        future_to_year = {pool.submit(fetch_chart_for_year, year, limit): year for year in years}
         for future in as_completed(future_to_year):
             year = future_to_year[future]
             exc = future.exception()

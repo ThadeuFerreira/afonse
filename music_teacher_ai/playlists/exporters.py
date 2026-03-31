@@ -3,6 +3,7 @@ Playlist export formatters.
 
 Supported formats: json, m3u, m3u8
 """
+
 from pathlib import Path
 
 from music_teacher_ai.playlists.models import Playlist

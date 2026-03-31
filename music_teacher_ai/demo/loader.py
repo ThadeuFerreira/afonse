@@ -5,6 +5,7 @@ Auto-activates when the songs table is empty (fresh install or no init).
 Populates the database with 10 well-known songs using the same schema as
 the full database so all core features work immediately.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,6 +26,7 @@ _CREDENTIAL_KEYS = [
 # Detection
 # ---------------------------------------------------------------------------
 
+
 def is_db_empty() -> bool:
     """Return True when the songs table has no rows (DB is uninitialised)."""
     from sqlmodel import func, select
@@ -43,6 +45,7 @@ def is_db_empty() -> bool:
 # ---------------------------------------------------------------------------
 # Loading
 # ---------------------------------------------------------------------------
+
 
 def load_demo_songs() -> int:
     """
@@ -64,9 +67,7 @@ def load_demo_songs() -> int:
     with get_session() as session:
         for entry in raw:
             # get-or-create artist
-            artist_row = session.exec(
-                select(Artist).where(Artist.name == entry["artist"])
-            ).first()
+            artist_row = session.exec(select(Artist).where(Artist.name == entry["artist"])).first()
             if not artist_row:
                 artist_row = Artist(name=entry["artist"])
                 session.add(artist_row)
@@ -93,9 +94,7 @@ def load_demo_songs() -> int:
                 inserted += 1
 
             # insert lyrics if absent
-            lyr = session.exec(
-                select(Lyrics).where(Lyrics.song_id == song_id)
-            ).first()
+            lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song_id)).first()
             if not lyr and entry.get("lyrics"):
                 session.add(Lyrics(song_id=song_id, lyrics_text=entry["lyrics"]))
 
@@ -107,6 +106,7 @@ def load_demo_songs() -> int:
 # ---------------------------------------------------------------------------
 # Auto-activation
 # ---------------------------------------------------------------------------
+
 
 def auto_load_demo_if_needed() -> bool:
     """
@@ -120,7 +120,7 @@ def auto_load_demo_if_needed() -> bool:
     """
     from music_teacher_ai.database.sqlite import create_db
 
-    create_db()   # idempotent — creates schema if absent
+    create_db()  # idempotent — creates schema if absent
 
     if not is_db_empty():
         return False
@@ -134,23 +134,26 @@ def auto_load_demo_if_needed() -> bool:
 # User-facing messages
 # ---------------------------------------------------------------------------
 
+
 def print_minimal_banner() -> None:
     """Print the minimal-mode startup notice."""
     from rich.console import Console
     from rich.panel import Panel
 
     console = Console()
-    console.print(Panel(
-        "[bold yellow]Running in MINIMAL MODE[/bold yellow]\n\n"
-        "A demo dataset with 10 songs has been loaded.\n"
-        "External APIs are [dim]disabled[/dim].\n\n"
-        "To enable full functionality:\n\n"
-        "  1. Configure API credentials  →  [cyan]music-teacher config[/cyan]\n"
-        "  2. Initialise the full DB     →  [cyan]music-teacher init[/cyan]",
-        title="Music Teacher AI",
-        border_style="yellow",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            "[bold yellow]Running in MINIMAL MODE[/bold yellow]\n\n"
+            "A demo dataset with 10 songs has been loaded.\n"
+            "External APIs are [dim]disabled[/dim].\n\n"
+            "To enable full functionality:\n\n"
+            "  1. Configure API credentials  →  [cyan]music-teacher config[/cyan]\n"
+            "  2. Initialise the full DB     →  [cyan]music-teacher init[/cyan]",
+            title="Music Teacher AI",
+            border_style="yellow",
+            expand=False,
+        )
+    )
     _print_credential_warning()
 
 

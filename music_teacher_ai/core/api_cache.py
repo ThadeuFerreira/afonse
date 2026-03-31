@@ -8,6 +8,7 @@ value is returned without hitting the network.
 Exceptions are never cached — a failed request will be retried next time.
 By default None results are also NOT cached (use cache_none=True to opt in).
 """
+
 import dataclasses
 import hashlib
 import json
@@ -114,6 +115,7 @@ def cached_api(
                      not re-queried.  Default False — None is not cached so a
                      retry with valid credentials will actually hit the API.
     """
+
     def decorator(fn: Callable) -> Callable:
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -160,4 +162,5 @@ def cached_api(
             return result
 
         return wrapper
+
     return decorator

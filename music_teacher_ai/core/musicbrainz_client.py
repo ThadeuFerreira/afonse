@@ -7,6 +7,7 @@ Rate limit: 1 request/second (enforced by the library).
 Returns TrackMetadata with title, artist, album, release_year, and duration.
 Audio features (tempo/valence/energy/danceability) are not available from MusicBrainz.
 """
+
 from typing import Optional
 
 import musicbrainzngs

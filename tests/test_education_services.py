@@ -10,6 +10,7 @@ Covers:
   - MCP tools       generate_exercise, analyze_vocabulary,
                     detect_phrasal_verbs, create_lesson
 """
+
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -35,12 +36,14 @@ Magnificent horizons stretch beyond perception
 # fill_in_blank
 # ---------------------------------------------------------------------------
 
+
 class TestFillInBlank:
     def test_returns_correct_type(self):
         from music_teacher_ai.education_services.exercises.fill_in_blank import (
             FillInBlankExercise,
             generate,
         )
+
         ex = generate(_LYRICS)
         assert isinstance(ex, FillInBlankExercise)
 
@@ -70,6 +73,7 @@ class TestFillInBlank:
             _STOP_WORDS,
             generate,
         )
+
         ex = generate(_LYRICS, num_blanks=10)
         for b in ex.blanks:
             assert b.word.lower() not in _STOP_WORDS
@@ -119,12 +123,14 @@ class TestFillInBlank:
 # vocabulary analyzer
 # ---------------------------------------------------------------------------
 
+
 class TestVocabularyAnalyzer:
     def test_returns_correct_type(self):
         from music_teacher_ai.education_services.vocabulary.analyzer import (
             VocabularyAnalysis,
             analyze,
         )
+
         result = analyze(_LYRICS)
         assert isinstance(result, VocabularyAnalysis)
 
@@ -188,12 +194,14 @@ class TestVocabularyAnalyzer:
 # phrasal verb detector
 # ---------------------------------------------------------------------------
 
+
 class TestPhrasalVerbDetector:
     def test_returns_correct_type(self):
         from music_teacher_ai.education_services.phrase_detection.phrasal_verbs import (
             PhrasalVerbReport,
             detect,
         )
+
         report = detect(_LYRICS)
         assert isinstance(report, PhrasalVerbReport)
 
@@ -255,12 +263,14 @@ class TestPhrasalVerbDetector:
 # lesson builder
 # ---------------------------------------------------------------------------
 
+
 class TestLessonBuilder:
     def test_returns_lesson(self):
         from music_teacher_ai.education_services.lesson_builder.builder import (
             Lesson,
             build_lesson,
         )
+
         lesson = build_lesson(song_id=1, lyrics=_LYRICS, song_title="Test", artist="Artist")
         assert isinstance(lesson, Lesson)
 
@@ -325,6 +335,7 @@ class TestLessonBuilder:
 # REST endpoints
 # ---------------------------------------------------------------------------
 
+
 class TestEducationREST:
     @pytest.fixture
     def client(self, tmp_path, monkeypatch):
@@ -359,6 +370,7 @@ class TestEducationREST:
         from fastapi.testclient import TestClient
 
         import music_teacher_ai.api.rest_api as _api
+
         importlib.reload(_api)
         return TestClient(_api.app)
 
@@ -417,6 +429,7 @@ class TestEducationREST:
 # MCP tools
 # ---------------------------------------------------------------------------
 
+
 class TestEducationMCP:
     @pytest.fixture(autouse=True)
     def setup_db(self, tmp_path, monkeypatch):
@@ -450,6 +463,7 @@ class TestEducationMCP:
         import importlib
 
         import music_teacher_ai.api.mcp_server as _mcp
+
         importlib.reload(_mcp)
         return _mcp.dispatch(tool, inputs)
 
@@ -485,6 +499,7 @@ class TestEducationMCP:
 
     def test_generate_exercise_tool_in_tools_list(self):
         import music_teacher_ai.api.mcp_server as _mcp
+
         names = {t["name"] for t in _mcp.TOOLS}
         assert "generate_exercise" in names
         assert "analyze_vocabulary" in names

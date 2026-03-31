@@ -20,9 +20,7 @@ def search_songs(
             # exec(select(Column)) returns scalars directly, not row tuples
             song_ids = set(
                 session.exec(
-                    select(VocabularyIndex.song_id).where(
-                        VocabularyIndex.word == word.lower()
-                    )
+                    select(VocabularyIndex.song_id).where(VocabularyIndex.word == word.lower())
                 ).all()
             )
             if not song_ids:
@@ -43,10 +41,8 @@ def search_songs(
         # Apply the artist join-filter inside the query so that `limit`
         # applies to the already-filtered set, not the unfiltered table.
         if artist:
-            query = (
-                query
-                .join(Artist, Song.artist_id == Artist.id)
-                .where(Artist.name.ilike(f"%{artist}%"))
+            query = query.join(Artist, Song.artist_id == Artist.id).where(
+                Artist.name.ilike(f"%{artist}%")
             )
 
         songs = session.exec(query.limit(limit)).all()

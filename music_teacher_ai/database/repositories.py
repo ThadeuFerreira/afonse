@@ -28,7 +28,9 @@ class SongRepository:
 
     def song_exists(self, session: Session, *, title: str, artist_id: int) -> bool:
         return (
-            session.exec(select(Song).where(Song.title == title).where(Song.artist_id == artist_id)).first()
+            session.exec(
+                select(Song).where(Song.title == title).where(Song.artist_id == artist_id)
+            ).first()
             is not None
         )
 
@@ -46,7 +48,9 @@ class SongRepository:
         return song
 
     def load_existing_keys(self, session: Session) -> set[str]:
-        rows = session.exec(select(Song.title, Artist.name).join(Artist, Song.artist_id == Artist.id)).all()
+        rows = session.exec(
+            select(Song.title, Artist.name).join(Artist, Song.artist_id == Artist.id)
+        ).all()
         return {song_key(title, artist) for title, artist in rows}
 
 
@@ -56,4 +60,3 @@ class SongCandidateRepository:
         if query_origin:
             query = query.where(SongCandidate.query_origin == query_origin)
         return session.exec(query).all()
-

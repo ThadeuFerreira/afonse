@@ -38,10 +38,10 @@ logger = logging.getLogger(__name__)
 # Tunables
 # ---------------------------------------------------------------------------
 
-EXPANSION_THRESHOLD = 10    # trigger expansion when search returns fewer results
-_MAX_API_REQUESTS = 20      # max API calls per expansion job
-_MAX_CANDIDATES = 200       # max candidates to stage per job
-_PAGES_PER_SOURCE = 2       # pages to fetch per source strategy
+EXPANSION_THRESHOLD = 10  # trigger expansion when search returns fewer results
+_MAX_API_REQUESTS = 20  # max API calls per expansion job
+_MAX_CANDIDATES = 200  # max candidates to stage per job
+_PAGES_PER_SOURCE = 2  # pages to fetch per source strategy
 
 # ---------------------------------------------------------------------------
 # In-flight job tracker — prevents duplicate background threads
@@ -56,6 +56,7 @@ _candidate_repo = SongCandidateRepository()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def build_query_origin(
     genre: Optional[str] = None,
@@ -85,15 +86,17 @@ def _stage_candidates(
     now = datetime.now(timezone.utc).isoformat()
     with get_session() as session:
         for c in candidates:
-            session.add(SongCandidate(
-                title=c.title,
-                artist=c.artist,
-                year=c.year,
-                source_api=source_api,
-                query_origin=query_origin,
-                created_at=now,
-                status="pending",
-            ))
+            session.add(
+                SongCandidate(
+                    title=c.title,
+                    artist=c.artist,
+                    year=c.year,
+                    source_api=source_api,
+                    query_origin=query_origin,
+                    created_at=now,
+                    status="pending",
+                )
+            )
         session.commit()
 
 
@@ -158,6 +161,7 @@ def process_candidates(query_origin: Optional[str] = None) -> dict:
 # Background worker
 # ---------------------------------------------------------------------------
 
+
 def _run_expansion(
     query_origin: str,
     genre: Optional[str],
@@ -181,6 +185,7 @@ def _run_expansion(
             session.commit()
 
         from music_teacher_ai.config.settings import LASTFM_API_KEY
+
         api_key: str = LASTFM_API_KEY or ""
 
         def _load_keys():
@@ -264,6 +269,7 @@ def _run_expansion(
 # Public trigger
 # ---------------------------------------------------------------------------
 
+
 def run_expansion_sync(
     genre: Optional[str] = None,
     artist: Optional[str] = None,
@@ -298,11 +304,12 @@ def run_expansion_sync(
         ).first()
     if row and row.details:
         import re
+
         nums = {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", row.details)}
         return {
             "processed": nums.get("processed", 0),
-            "rejected":  nums.get("rejected", 0),
-            "staged":    nums.get("staged", 0),
+            "rejected": nums.get("rejected", 0),
+            "staged": nums.get("staged", 0),
         }
     return {"processed": 0, "rejected": 0, "staged": 0}
 

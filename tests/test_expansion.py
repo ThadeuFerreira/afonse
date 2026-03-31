@@ -4,6 +4,7 @@ Tests for the on-demand database expansion pipeline.
 All tests use an in-memory/tmp database and mock external API calls so they
 never hit real network endpoints.
 """
+
 import threading
 
 import pytest
@@ -22,6 +23,7 @@ from music_teacher_ai.pipeline.expansion import (
 # DB fixture — same pattern as test_enrichment.py
 # ---------------------------------------------------------------------------
 
+
 def _make_db(tmp_path, monkeypatch):
     """Point the whole stack at a fresh SQLite database in tmp_path."""
     from music_teacher_ai.config import settings as cfg_settings
@@ -30,9 +32,11 @@ def _make_db(tmp_path, monkeypatch):
     monkeypatch.setattr(cfg_settings, "DATABASE_PATH", db_path)
 
     import music_teacher_ai.database.sqlite as db_mod
+
     monkeypatch.setattr(db_mod, "DATABASE_PATH", db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     from sqlmodel import SQLModel, create_engine
+
     test_engine = create_engine(f"sqlite:///{db_path}", echo=False)
     monkeypatch.setattr(db_mod, "engine", test_engine)
     SQLModel.metadata.create_all(test_engine)
@@ -42,6 +46,7 @@ def _make_db(tmp_path, monkeypatch):
         _active_jobs.clear()
 
     import music_teacher_ai.pipeline.expansion as exp_mod
+
     monkeypatch.setattr(exp_mod, "_active_jobs", _active_jobs)
     return exp_mod
 
@@ -49,6 +54,7 @@ def _make_db(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # build_query_origin
 # ---------------------------------------------------------------------------
+
 
 def test_query_origin_genre():
     assert build_query_origin(genre="jazz") == "genre:jazz"
@@ -80,6 +86,7 @@ def test_query_origin_empty():
 # ---------------------------------------------------------------------------
 # _stage_candidates
 # ---------------------------------------------------------------------------
+
 
 def test_stage_candidates_writes_pending(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
@@ -118,6 +125,7 @@ def test_stage_candidates_preserves_year(tmp_path, monkeypatch):
 # process_candidates
 # ---------------------------------------------------------------------------
 
+
 def test_process_candidates_inserts_new_song(tmp_path, monkeypatch):
     exp = _make_db(tmp_path, monkeypatch)
     from music_teacher_ai.database.models import Song
@@ -148,7 +156,9 @@ def test_process_candidates_rejects_existing_song(tmp_path, monkeypatch):
         session.add(Song(title="Known Song", artist_id=a.id))
         session.commit()
 
-    exp._stage_candidates([CandidateSong("Known Song", "Known Artist")], "artist:Known Artist", "lastfm")
+    exp._stage_candidates(
+        [CandidateSong("Known Song", "Known Artist")], "artist:Known Artist", "lastfm"
+    )
     result = exp.process_candidates()
 
     assert result["rejected"] == 1
@@ -195,7 +205,7 @@ def test_process_candidates_marks_status_correctly(tmp_path, monkeypatch):
     exp._stage_candidates(
         [
             CandidateSong("Existing Song", "Existing Artist"),  # dup → rejected
-            CandidateSong("Brand New Song", "New Artist"),      # new → processed
+            CandidateSong("Brand New Song", "New Artist"),  # new → processed
         ],
         "artist:Existing Artist",
         "lastfm",
@@ -211,6 +221,7 @@ def test_process_candidates_marks_status_correctly(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # trigger_expansion
 # ---------------------------------------------------------------------------
+
 
 def test_trigger_expansion_returns_false_word_only(tmp_path, monkeypatch):
     _make_db(tmp_path, monkeypatch)
@@ -246,6 +257,7 @@ def test_trigger_expansion_deduplicates_active_jobs(tmp_path, monkeypatch):
         released.wait(timeout=2)
 
     import music_teacher_ai.pipeline.expansion as exp_mod
+
     monkeypatch.setattr(exp_mod, "_run_expansion", fake_run)
 
     first = trigger_expansion(genre="rock")
@@ -261,6 +273,7 @@ def test_trigger_expansion_deduplicates_active_jobs(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # REST endpoint — /search returns new format
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def rest_client(tmp_path, monkeypatch):
@@ -279,6 +292,7 @@ def rest_client(tmp_path, monkeypatch):
     SQLModel.metadata.create_all(test_engine)
 
     from music_teacher_ai.api.rest_api import app
+
     return TestClient(app, raise_server_exceptions=True)
 
 
@@ -296,6 +310,7 @@ def test_search_triggers_expansion_when_results_below_threshold(rest_client, mon
     triggered = []
 
     import music_teacher_ai.api.rest_api as rest_mod
+
     monkeypatch.setattr(
         rest_mod,
         "keyword_search",
@@ -304,8 +319,8 @@ def test_search_triggers_expansion_when_results_below_threshold(rest_client, mon
     )
 
     import music_teacher_ai.pipeline.expansion as exp_mod
-    monkeypatch.setattr(exp_mod, "trigger_expansion",
-                        lambda **kw: triggered.append(kw) or True)
+
+    monkeypatch.setattr(exp_mod, "trigger_expansion", lambda **kw: triggered.append(kw) or True)
 
     resp = rest_client.get("/search", params={"genre": "synthwave"})
     assert resp.status_code == 200
@@ -316,8 +331,8 @@ def test_search_triggers_expansion_when_results_below_threshold(rest_client, mon
 def test_search_no_expansion_for_word_only(rest_client, monkeypatch):
     triggered = []
     import music_teacher_ai.pipeline.expansion as exp_mod
-    monkeypatch.setattr(exp_mod, "trigger_expansion",
-                        lambda **kw: triggered.append(kw) or False)
+
+    monkeypatch.setattr(exp_mod, "trigger_expansion", lambda **kw: triggered.append(kw) or False)
 
     resp = rest_client.get("/search", params={"word": "never"})
     assert resp.status_code == 200
@@ -327,6 +342,7 @@ def test_search_no_expansion_for_word_only(rest_client, monkeypatch):
 # ---------------------------------------------------------------------------
 # MCP — search_songs dispatch returns new format + process_candidates tool
 # ---------------------------------------------------------------------------
+
 
 def test_mcp_search_songs_returns_new_format(tmp_path, monkeypatch):
     from sqlmodel import SQLModel, create_engine
@@ -343,6 +359,7 @@ def test_mcp_search_songs_returns_new_format(tmp_path, monkeypatch):
     SQLModel.metadata.create_all(test_engine)
 
     from music_teacher_ai.api.mcp_server import dispatch
+
     result = dispatch("search_songs", {"word": "love"})
     assert "results" in result
     assert "database_expansion_triggered" in result
@@ -350,6 +367,7 @@ def test_mcp_search_songs_returns_new_format(tmp_path, monkeypatch):
 
 def test_mcp_process_candidates_tool_in_tools_list():
     from music_teacher_ai.api.mcp_server import TOOLS
+
     names = {t["name"] for t in TOOLS}
     assert "process_candidates" in names
 
@@ -369,6 +387,7 @@ def test_mcp_process_candidates_dispatch(tmp_path, monkeypatch):
     SQLModel.metadata.create_all(test_engine)
 
     from music_teacher_ai.api.mcp_server import dispatch
+
     result = dispatch("process_candidates", {})
     assert result == {"processed": 0, "rejected": 0, "total": 0}
 
@@ -388,13 +407,13 @@ def test_mcp_process_candidates_with_query_origin(tmp_path, monkeypatch):
     SQLModel.metadata.create_all(test_engine)
 
     import music_teacher_ai.pipeline.expansion as exp_mod
+
     monkeypatch.setattr(exp_mod, "_active_jobs", set())
 
     # Stage a candidate first
-    exp_mod._stage_candidates(
-        [CandidateSong("MCP Song", "MCP Artist")], "genre:mcp", "lastfm"
-    )
+    exp_mod._stage_candidates([CandidateSong("MCP Song", "MCP Artist")], "genre:mcp", "lastfm")
 
     from music_teacher_ai.api.mcp_server import dispatch
+
     result = dispatch("process_candidates", {"query_origin": "genre:mcp"})
     assert result["processed"] == 1

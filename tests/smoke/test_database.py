@@ -9,6 +9,7 @@ Verifies:
 - Foreign key relationships are consistent
 - Duplicate detection by spotify_id works
 """
+
 import pytest
 from sqlmodel import select
 
@@ -17,6 +18,7 @@ from sqlmodel import select
 def session(tmp_db):
     """Return a live session against the temp database."""
     from music_teacher_ai.database.sqlite import get_session
+
     with get_session() as s:
         yield s
 
@@ -24,11 +26,24 @@ def session(tmp_db):
 def test_schema_creation(tmp_db):
     """create_db() creates all expected tables."""
     import sqlite3
+
     conn = sqlite3.connect(str(tmp_db))
-    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    tables = {
+        row[0]
+        for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    }
     conn.close()
 
-    expected = {"song", "artist", "album", "lyrics", "chart", "vocabularyindex", "embedding", "ingestionfailure"}
+    expected = {
+        "song",
+        "artist",
+        "album",
+        "lyrics",
+        "chart",
+        "vocabularyindex",
+        "embedding",
+        "ingestionfailure",
+    }
     assert expected.issubset(tables), f"Missing tables: {expected - tables}"
 
 
@@ -108,9 +123,7 @@ def test_vocabulary_index(session):
         session.add(VocabularyIndex(word=word, song_id=song.id))
     session.commit()
 
-    hits = session.exec(
-        select(VocabularyIndex).where(VocabularyIndex.word == "dream")
-    ).all()
+    hits = session.exec(select(VocabularyIndex).where(VocabularyIndex.word == "dream")).all()
     assert len(hits) == 1
     assert hits[0].song_id == song.id
 

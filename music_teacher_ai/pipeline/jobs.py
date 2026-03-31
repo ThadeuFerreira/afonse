@@ -9,8 +9,7 @@ class ExpansionJobRunner(Protocol):
         artist: Optional[str] = None,
         year: Optional[int] = None,
         word: Optional[str] = None,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
 
 @dataclass
@@ -29,4 +28,3 @@ class InProcessExpansionRunner:
 
 def get_job_runner() -> ExpansionJobRunner:
     return InProcessExpansionRunner()
-

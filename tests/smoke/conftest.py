@@ -10,6 +10,7 @@ Or via the CLI:
 
     music-teacher doctor
 """
+
 import os
 
 import pytest
@@ -21,6 +22,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Skip markers – each test declares which credentials it needs
 # ---------------------------------------------------------------------------
+
 
 def _skip_if_missing(*env_vars: str):
     missing = [v for v in env_vars if not os.getenv(v)]
@@ -43,6 +45,7 @@ requires_genius = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tmp_db(tmp_path, monkeypatch):
@@ -77,6 +80,7 @@ def tmp_faiss(tmp_path, monkeypatch):
     import importlib
 
     import music_teacher_ai.config.settings as settings_mod
+
     importlib.reload(settings_mod)
 
     yield index_file

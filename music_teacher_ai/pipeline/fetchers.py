@@ -47,6 +47,7 @@ def fetch_candidates_for_expansion(
             batch = fn(*args)
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).warning("fetch %s failed: %s", fn.__name__, exc)
             return
         api_requests += 1
@@ -84,7 +85,13 @@ def _lastfm_get(api_key: str, method: str, **params) -> dict:
 
     resp = requests.get(
         _LASTFM_API_URL,
-        params={"method": method, "api_key": api_key, "format": "json", "limit": PAGE_SIZE, **params},
+        params={
+            "method": method,
+            "api_key": api_key,
+            "format": "json",
+            "limit": PAGE_SIZE,
+            **params,
+        },
         timeout=15,
     )
     resp.raise_for_status()
@@ -135,7 +142,11 @@ def fetch_artist_top_tracks(artist: str, page: int, api_key: str) -> list[Candid
     try:
         data = _lastfm_get(api_key, "artist.getTopTracks", artist=artist, page=page)
         tracks = data.get("toptracks", {}).get("track", [])
-        return [CandidateSong(title=t["name"], artist=artist) for t in tracks if isinstance(t, dict) and t.get("name")]
+        return [
+            CandidateSong(title=t["name"], artist=artist)
+            for t in tracks
+            if isinstance(t, dict) and t.get("name")
+        ]
     except Exception:
         return []
 
@@ -158,12 +169,18 @@ def fetch_by_year_mb(year: int, page: int) -> list[CandidateSong]:
         import musicbrainzngs as mb
 
         mb.set_useragent("MusicTeacherAI", "0.1")
-        result = mb.search_recordings(date=str(year), limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE)
+        result = mb.search_recordings(
+            date=str(year), limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE
+        )
         candidates = []
         for rec in result.get("recording-list", []):
             title = rec.get("title", "").strip()
             artist_name = next(
-                (c["artist"]["name"] for c in rec.get("artist-credit", []) if isinstance(c, dict) and "artist" in c),
+                (
+                    c["artist"]["name"]
+                    for c in rec.get("artist-credit", [])
+                    if isinstance(c, dict) and "artist" in c
+                ),
                 "",
             ).strip()
             if title and artist_name:
@@ -178,12 +195,18 @@ def fetch_by_artist_mb(artist: str, page: int) -> list[CandidateSong]:
         import musicbrainzngs as mb
 
         mb.set_useragent("MusicTeacherAI", "0.1")
-        result = mb.search_recordings(artistname=artist, limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE)
+        result = mb.search_recordings(
+            artistname=artist, limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE
+        )
         candidates = []
         for rec in result.get("recording-list", []):
             title = rec.get("title", "").strip()
             artist_name = next(
-                (c["artist"]["name"] for c in rec.get("artist-credit", []) if isinstance(c, dict) and "artist" in c),
+                (
+                    c["artist"]["name"]
+                    for c in rec.get("artist-credit", [])
+                    if isinstance(c, dict) and "artist" in c
+                ),
                 "",
             ).strip()
             if title and artist_name:
@@ -276,4 +299,3 @@ def build_variants(
 
     random.shuffle(variants)
     return variants
-

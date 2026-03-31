@@ -44,4 +44,3 @@ def test_keyword_search_with_expansion_uses_policy(monkeypatch):
     response = keyword_search_with_expansion(SearchRequest(genre="rock", limit=20))
     assert response["results"] == []
     assert response["database_expansion_triggered"] is True
-

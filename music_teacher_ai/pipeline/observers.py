@@ -6,23 +6,18 @@ from typing import Iterator, Protocol
 
 
 class ProgressHandle(Protocol):
-    def update(self, *, advance: int, new: int, dup: int, req: int, variants: int) -> None:
-        ...
+    def update(self, *, advance: int, new: int, dup: int, req: int, variants: int) -> None: ...
 
 
 class PipelineObserver(Protocol):
-    def info(self, message: str) -> None:
-        ...
+    def info(self, message: str) -> None: ...
 
-    def debug(self, message: str) -> None:
-        ...
+    def debug(self, message: str) -> None: ...
 
-    def warn(self, message: str) -> None:
-        ...
+    def warn(self, message: str) -> None: ...
 
     @contextmanager
-    def progress(self, *, total: int, variants: int) -> Iterator[ProgressHandle]:
-        ...
+    def progress(self, *, total: int, variants: int) -> Iterator[ProgressHandle]: ...
 
 
 @dataclass
@@ -102,7 +97,9 @@ class RichObserver:
                 _progress: Progress
                 _task: int
 
-                def update(self, *, advance: int, new: int, dup: int, req: int, variants: int) -> None:
+                def update(
+                    self, *, advance: int, new: int, dup: int, req: int, variants: int
+                ) -> None:
                     self._progress.update(
                         self._task,
                         advance=advance,

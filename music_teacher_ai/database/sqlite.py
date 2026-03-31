@@ -21,9 +21,7 @@ def _migrate():
         for table in SQLModel.metadata.sorted_tables:
             # Skip tables that don't exist yet — create_db() will create them.
             exists = conn.execute(
-                sqlalchemy.text(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=:name"
-                ),
+                sqlalchemy.text("SELECT 1 FROM sqlite_master WHERE type='table' AND name=:name"),
                 {"name": table.name},
             ).first()
             if not exists:

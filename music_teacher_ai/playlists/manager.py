@@ -4,6 +4,7 @@ PlaylistManager – create, load, list, delete, and refresh playlists.
 Playlists are stored as JSON files under PLAYLISTS_DIR/{slug}/playlist.json.
 M3U and M3U8 exports are generated alongside the JSON on creation.
 """
+
 import re
 from datetime import date
 from pathlib import Path
@@ -21,6 +22,7 @@ from music_teacher_ai.playlists.models import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _slug(name: str) -> str:
     """Convert a playlist name to a filesystem-safe slug."""
@@ -68,22 +70,20 @@ def _search_by_title(title: str, limit: int) -> list[dict]:
     from music_teacher_ai.database.sqlite import get_session
 
     with get_session() as session:
-        songs = session.exec(
-            select(Song)
-            .where(Song.title.ilike(f"%{title}%"))
-            .limit(limit)
-        ).all()
+        songs = session.exec(select(Song).where(Song.title.ilike(f"%{title}%")).limit(limit)).all()
         results = []
         for song in songs:
             artist_obj = session.get(Artist, song.artist_id)
-            results.append({
-                "id": song.id,
-                "title": song.title,
-                "artist": artist_obj.name if artist_obj else "",
-                "year": song.release_year,
-                "genre": song.genre,
-                "popularity": song.popularity,
-            })
+            results.append(
+                {
+                    "id": song.id,
+                    "title": song.title,
+                    "artist": artist_obj.name if artist_obj else "",
+                    "year": song.release_year,
+                    "genre": song.genre,
+                    "popularity": song.popularity,
+                }
+            )
         return results
 
 
@@ -94,14 +94,17 @@ def _run_query(query: PlaylistQuery) -> list[PlaylistSong]:
 
     if query.similar_text:
         from music_teacher_ai.search.similar_search import find_similar_by_text
+
         raw = find_similar_by_text(query.similar_text, top_k=capped_limit)
 
     elif query.similar_song_id is not None:
         from music_teacher_ai.search.similar_search import find_similar_by_song
+
         raw = find_similar_by_song(query.similar_song_id, top_k=capped_limit)
 
     elif query.semantic_query:
         from music_teacher_ai.search.semantic_search import semantic_search
+
         raw = semantic_search(query.semantic_query, top_k=capped_limit)
 
     elif query.song:
@@ -109,6 +112,7 @@ def _run_query(query: PlaylistQuery) -> list[PlaylistSong]:
 
     else:
         from music_teacher_ai.search.keyword_search import search_songs
+
         raw = search_songs(
             word=query.word,
             year=query.year,
@@ -125,6 +129,7 @@ def _run_query(query: PlaylistQuery) -> list[PlaylistSong]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def create(
     name: str,
@@ -193,6 +198,7 @@ def delete(playlist_id: str) -> None:
     if not dest.exists():
         raise FileNotFoundError(f"Playlist not found: '{playlist_id}'")
     import shutil
+
     shutil.rmtree(dest)
 
 
@@ -212,5 +218,6 @@ def refresh(playlist_id: str) -> Playlist:
 def export_format(playlist_id: str, fmt: str) -> str:
     """Return the playlist content as a string in the requested format."""
     from music_teacher_ai.playlists.exporters import render
+
     playlist = get(playlist_id)
     return render(playlist, fmt)

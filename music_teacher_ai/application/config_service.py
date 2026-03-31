@@ -19,4 +19,3 @@ def update_credentials(credentials: dict[str, str]) -> dict:
         raise ValidationError("No credentials provided")
     update_env(credentials)
     return {"updated": sorted(credentials.keys()), "status": current_status()}
-

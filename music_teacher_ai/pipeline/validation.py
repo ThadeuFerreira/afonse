@@ -5,6 +5,7 @@ Validates song title, artist, and lyrics fields before they are written to
 the database.  Corrupt records (JSON fragments, URLs in title/artist, suspiciously
 short or long values) are rejected so they never enter the main songs table.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,14 +17,14 @@ from typing import Optional
 # Rules
 # ---------------------------------------------------------------------------
 
-_URL_RE    = re.compile(r"https?://|www\.", re.I)
-_JSON_RE   = re.compile(r'^\s*[\[{]')          # starts with [ or {
-_EMBED_RE  = re.compile(r'"[a-z_]+"\s*:')       # "key": pattern inside text
-_CTRL_RE   = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+_URL_RE = re.compile(r"https?://|www\.", re.I)
+_JSON_RE = re.compile(r"^\s*[\[{]")  # starts with [ or {
+_EMBED_RE = re.compile(r'"[a-z_]+"\s*:')  # "key": pattern inside text
+_CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
-MAX_TITLE_LEN  = 200
+MAX_TITLE_LEN = 200
 MAX_ARTIST_LEN = 200
-MIN_LYRICS_LEN = 20     # chars — shorter is almost certainly a fetch error
+MIN_LYRICS_LEN = 20  # chars — shorter is almost certainly a fetch error
 MAX_LYRICS_LEN = 10_000
 
 # Word-count thresholds
@@ -39,6 +40,7 @@ _WORD_RE = re.compile(r"\b[a-z']+\b", re.I)
 # ---------------------------------------------------------------------------
 # Result type
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ValidationResult:
@@ -63,6 +65,7 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 # Field validators
 # ---------------------------------------------------------------------------
+
 
 def validate_title(title: Optional[str]) -> ValidationResult:
     r = ValidationResult(ok=True)
@@ -112,7 +115,9 @@ def validate_lyrics(lyrics: Optional[str]) -> ValidationResult:
         r.add(f"lyrics too long ({word_count} words, hard limit {MAX_WORD_COUNT})")
         return r  # no further checks needed
     if word_count > SUSPICIOUS_WORD_COUNT:
-        r.warn(f"lyrics word count suspicious ({word_count} words, typical max {SUSPICIOUS_WORD_COUNT})")
+        r.warn(
+            f"lyrics word count suspicious ({word_count} words, typical max {SUSPICIOUS_WORD_COUNT})"
+        )
     # Detect JSON fragment stored as lyrics
     if _JSON_RE.match(text):
         r.add("lyrics start with JSON bracket")
@@ -137,6 +142,7 @@ def validate_lyrics(lyrics: Optional[str]) -> ValidationResult:
 # Composite validator
 # ---------------------------------------------------------------------------
 
+
 def validate_song(
     title: Optional[str],
     artist: Optional[str],
@@ -159,6 +165,7 @@ def validate_song(
 # ---------------------------------------------------------------------------
 # Pipeline scope helper
 # ---------------------------------------------------------------------------
+
 
 def songs_needing_lyrics() -> set[int]:
     """
@@ -192,6 +199,7 @@ def songs_needing_lyrics() -> set[int]:
         from sqlmodel import select
 
         from music_teacher_ai.database.models import Song
+
         all_song_ids = {row for row in session.exec(select(Song.id)).all()}
 
     no_lyrics_ids = all_song_ids - good_ids - suspicious_ids

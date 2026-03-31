@@ -54,5 +54,6 @@ class Variant:
         return len(self.tried_pages) >= self.max_page
 
     def is_saturated(self) -> bool:
-        return len(self.tried_pages) >= self.min_variant_tries and self.dup_ratio >= self.dup_threshold
-
+        return (
+            len(self.tried_pages) >= self.min_variant_tries and self.dup_ratio >= self.dup_threshold
+        )

@@ -32,7 +32,9 @@ class Song(SQLModel, table=True):
     energy: Optional[float] = None
     danceability: Optional[float] = None
     isrc: Optional[str] = Field(default=None, index=True)  # International Standard Recording Code
-    metadata_source: Optional[str] = None  # "spotify" | "musicbrainz" | "lyrics_only" | "failed" | None=not enriched
+    metadata_source: Optional[str] = (
+        None  # "spotify" | "musicbrainz" | "lyrics_only" | "failed" | None=not enriched
+    )
 
 
 class Lyrics(SQLModel, table=True):
@@ -75,14 +77,15 @@ class IngestionFailure(SQLModel, table=True):
 
 class SongCandidate(SQLModel, table=True):
     """Staging table for songs discovered by on-demand database expansion."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     artist: str
     year: Optional[int] = None
     genre: Optional[str] = None
-    source_api: str                                     # "lastfm" | "musicbrainz"
-    query_origin: str = Field(index=True)               # e.g. "genre:jazz", "artist:Adele"
-    created_at: str                                     # ISO-8601 UTC timestamp
+    source_api: str  # "lastfm" | "musicbrainz"
+    query_origin: str = Field(index=True)  # e.g. "genre:jazz", "artist:Adele"
+    created_at: str  # ISO-8601 UTC timestamp
     status: str = Field(default="pending", index=True)  # pending | processed | rejected
 
 

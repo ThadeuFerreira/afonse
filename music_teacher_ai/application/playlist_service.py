@@ -55,4 +55,3 @@ def export_playlist(playlist_id: str, fmt: str) -> str:
     import music_teacher_ai.playlists.manager as pm
 
     return pm.export_format(playlist_id, fmt)
-

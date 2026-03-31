@@ -6,6 +6,7 @@ is auto-generated on first use and stored in .env; it is required for the
 REST and MCP config endpoints so that arbitrary callers cannot overwrite
 credentials remotely.
 """
+
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,7 @@ ENV_PATH = BASE_DIR / ".env"
 # ---------------------------------------------------------------------------
 # Field registry
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ConfigField:
@@ -83,6 +85,7 @@ ALLOWED_KEYS: frozenset[str] = frozenset(f.key for f in FIELDS)
 # .env helpers
 # ---------------------------------------------------------------------------
 
+
 def read_env() -> dict[str, str]:
     """Return the current .env values as a plain dict (empty strings for unset keys)."""
     if not ENV_PATH.exists():
@@ -119,6 +122,7 @@ def update_env(updates: dict[str, str]) -> None:
 # Admin token
 # ---------------------------------------------------------------------------
 
+
 def get_admin_token() -> str:
     """
     Return the ADMIN_TOKEN from .env.  If not set, generate a secure random
@@ -141,6 +145,7 @@ def verify_admin_token(token: str) -> bool:
 # Display helpers
 # ---------------------------------------------------------------------------
 
+
 def mask(value: str) -> str:
     """Show the first 4 characters and replace the rest with ****."""
     if not value:
@@ -159,11 +164,13 @@ def current_status() -> list[dict]:
     rows = []
     for field in FIELDS:
         value = env.get(field.key, "")
-        rows.append({
-            "key": field.key,
-            "label": field.label,
-            "required": field.required,
-            "set": bool(value),
-            "masked_value": mask(value) if field.secret else (value or "(not set)"),
-        })
+        rows.append(
+            {
+                "key": field.key,
+                "label": field.label,
+                "required": field.required,
+                "set": bool(value),
+                "masked_value": mask(value) if field.secret else (value or "(not set)"),
+            }
+        )
     return rows

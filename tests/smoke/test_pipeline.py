@@ -10,12 +10,14 @@ Verifies:
 - similar_search finds results after the mini-pipeline runs
 - keyword_search finds songs by indexed word
 """
+
 import numpy as np
 from sqlmodel import select
 
 # ---------------------------------------------------------------------------
 # Helpers to seed a minimal in-memory dataset
 # ---------------------------------------------------------------------------
+
 
 def _seed_song(session, title: str, artist_name: str, lyrics_text: str, year: int = 1990):
     from music_teacher_ai.database.models import Artist, Lyrics, Song
@@ -40,6 +42,7 @@ def _seed_song(session, title: str, artist_name: str, lyrics_text: str, year: in
 # Vocabulary indexer
 # ---------------------------------------------------------------------------
 
+
 def test_vocabulary_indexer_extracts_words(tmp_db):
     from music_teacher_ai.database.models import VocabularyIndex
     from music_teacher_ai.database.sqlite import get_session
@@ -51,9 +54,7 @@ def test_vocabulary_indexer_extracts_words(tmp_db):
     build_vocabulary_index()
 
     with get_session() as session:
-        hits = session.exec(
-            select(VocabularyIndex).where(VocabularyIndex.word == "freedom")
-        ).all()
+        hits = session.exec(select(VocabularyIndex).where(VocabularyIndex.word == "freedom")).all()
         assert hits, "Expected 'freedom' to be indexed"
 
 
@@ -89,15 +90,14 @@ def test_vocabulary_indexer_no_duplicates(tmp_db):
     build_vocabulary_index()  # second run
 
     with get_session() as session:
-        hits = session.exec(
-            select(VocabularyIndex).where(VocabularyIndex.word == "love")
-        ).all()
+        hits = session.exec(select(VocabularyIndex).where(VocabularyIndex.word == "love")).all()
         assert len(hits) == 1, f"Expected 1 entry for 'love', got {len(hits)}"
 
 
 # ---------------------------------------------------------------------------
 # Embedding pipeline
 # ---------------------------------------------------------------------------
+
 
 def test_embedding_pipeline_stores_faiss_id(tmp_db, tmp_faiss):
     from music_teacher_ai.database.models import Embedding
@@ -162,6 +162,7 @@ def test_embedding_pipeline_faiss_ids_sequential(tmp_db, tmp_faiss):
 # End-to-end mini pipeline: seed → embed → similar search
 # ---------------------------------------------------------------------------
 
+
 def test_similar_search_after_pipeline(tmp_db, tmp_faiss):
     """After running the embedding pipeline, similar_search returns results."""
     from music_teacher_ai.database.sqlite import get_session
@@ -169,12 +170,24 @@ def test_similar_search_after_pipeline(tmp_db, tmp_faiss):
     from music_teacher_ai.search.similar_search import find_similar_by_text
 
     with get_session() as session:
-        _seed_song(session, "Freedom Song", "Artist F",
-                   "freedom rings across the land dreaming of a better world")
-        _seed_song(session, "Sad Song", "Artist G",
-                   "walking alone in the dark missing you every night crying tears")
-        _seed_song(session, "Happy Song", "Artist H",
-                   "sunshine and rainbows dancing in the street laughing all day")
+        _seed_song(
+            session,
+            "Freedom Song",
+            "Artist F",
+            "freedom rings across the land dreaming of a better world",
+        )
+        _seed_song(
+            session,
+            "Sad Song",
+            "Artist G",
+            "walking alone in the dark missing you every night crying tears",
+        )
+        _seed_song(
+            session,
+            "Happy Song",
+            "Artist H",
+            "sunshine and rainbows dancing in the street laughing all day",
+        )
 
     generate_embeddings()
 
@@ -183,9 +196,9 @@ def test_similar_search_after_pipeline(tmp_db, tmp_faiss):
     assert results, "find_similar_by_text returned no results"
     assert all("score" in r for r in results), "Results missing 'score' field"
     # Freedom Song should rank highest among the three
-    assert results[0]["title"] == "Freedom Song", (
-        f"Expected 'Freedom Song' as top result, got '{results[0]['title']}'"
-    )
+    assert (
+        results[0]["title"] == "Freedom Song"
+    ), f"Expected 'Freedom Song' as top result, got '{results[0]['title']}'"
 
 
 def test_keyword_search_after_indexing(tmp_db):
@@ -195,8 +208,12 @@ def test_keyword_search_after_indexing(tmp_db):
     from music_teacher_ai.search.keyword_search import search_songs
 
     with get_session() as session:
-        _seed_song(session, "River Song", "Artist I",
-                   "the river flows through the valley carrying dreams downstream")
+        _seed_song(
+            session,
+            "River Song",
+            "Artist I",
+            "the river flows through the valley carrying dreams downstream",
+        )
 
     build_vocabulary_index()
 

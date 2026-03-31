@@ -13,6 +13,7 @@ Debug logging:
   Set DEBUG=1 (or any truthy value) to enable icecream trace output showing
   which API source was used, ISRC values found, and per-song decisions.
 """
+
 import json
 import os
 
@@ -45,8 +46,10 @@ if not os.getenv("DEBUG"):
 # Source helpers
 # ---------------------------------------------------------------------------
 
+
 def _try_spotify(title: str, artist: str) -> TrackMetadata | None:
     from music_teacher_ai.core.spotify_client import search_track
+
     ic(title, artist)
     result = search_track(title, artist)
     ic(result)
@@ -55,6 +58,7 @@ def _try_spotify(title: str, artist: str) -> TrackMetadata | None:
 
 def _try_musicbrainz(title: str, artist: str) -> TrackMetadata | None:
     from music_teacher_ai.core.musicbrainz_client import search_track
+
     try:
         ic(title, artist)
         result = search_track(title, artist)
@@ -68,6 +72,7 @@ def _try_musicbrainz(title: str, artist: str) -> TrackMetadata | None:
 def _enrich_with_lastfm(meta: TrackMetadata) -> TrackMetadata:
     """Add genre tags and play count from Last.fm when not already present."""
     from music_teacher_ai.core import lastfm_client
+
     if not lastfm_client.is_configured():
         return meta
     if not meta.genres:
@@ -86,6 +91,7 @@ def _enrich_with_lastfm(meta: TrackMetadata) -> TrackMetadata:
 # DB write helper
 # ---------------------------------------------------------------------------
 
+
 def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) -> None:
     ic(meta.metadata_source, meta.isrc)
     artist.genres = json.dumps(meta.genres)
@@ -95,9 +101,7 @@ def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) ->
 
     if meta.album:
         album = session.exec(
-            select(Album)
-            .where(Album.name == meta.album)
-            .where(Album.artist_id == artist.id)
+            select(Album).where(Album.name == meta.album).where(Album.artist_id == artist.id)
         ).first()
         if not album:
             album = Album(
@@ -130,6 +134,7 @@ def _apply_metadata(session, song: Song, artist: Artist, meta: TrackMetadata) ->
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
+
 
 def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
     """
@@ -164,7 +169,7 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
         report.save()
         return
 
-    spotify_available = True   # disabled on first SpotifyPremiumRequiredError
+    spotify_available = True  # disabled on first SpotifyPremiumRequiredError
     enriched = 0
     failed = 0
 
@@ -202,12 +207,15 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                         meta = _try_spotify(song.title, artist.name)
                     except Exception as exc:
                         from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError
+
                         if isinstance(exc, SpotifyPremiumRequiredError):
                             console.log(
                                 "[yellow]Spotify unavailable (Premium required). "
                                 "Falling back to MusicBrainz + Last.fm for all remaining songs.[/yellow]"
                             )
-                            report.add_event("spotify_disabled", reason="SpotifyPremiumRequiredError")
+                            report.add_event(
+                                "spotify_disabled", reason="SpotifyPremiumRequiredError"
+                            )
                             spotify_available = False
                         else:
                             error = f"Spotify: {exc}"
@@ -236,7 +244,9 @@ def enrich_metadata(batch_size: int = 50, init_quick: bool = False) -> None:
                 if meta is None:
                     error = error or "No result from any source"
                     ic(song.title, artist.name, error)
-                    report.add_error(song_id=song.id, title=song.title, artist=artist.name, error=error)
+                    report.add_error(
+                        song_id=song.id, title=song.title, artist=artist.name, error=error
+                    )
                     # Mark the song so it is not retried on every subsequent run.
                     song.metadata_source = "failed"
                     session.add(song)

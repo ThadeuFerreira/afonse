@@ -4,6 +4,7 @@ Smoke tests for the Last.fm client.
 Requires LASTFM_API_KEY in .env.
 Free key at https://www.last.fm/api/account/create
 """
+
 import os
 
 import pytest
@@ -95,9 +96,9 @@ def test_lastfm_fetch_tags_uses_cache_without_network(monkeypatch):
     except Exception as exc:
         pytest.skip(f"Last.fm request failed during smoke test: {exc}")
 
-    assert _lastfm_cache_exists("_fetch_tags", title, artist, limit), (
-        "Expected cache file to exist after first _fetch_tags call"
-    )
+    assert _lastfm_cache_exists(
+        "_fetch_tags", title, artist, limit
+    ), "Expected cache file to exist after first _fetch_tags call"
 
     def _raise_if_network_used():
         raise RuntimeError("Network should not be used on cache hit")
@@ -115,6 +116,7 @@ def test_lastfm_get_tags_returns_empty_when_not_configured(monkeypatch):
 
     import music_teacher_ai.config.settings as s
     import music_teacher_ai.core.lastfm_client as lfm
+
     importlib.reload(s)
     importlib.reload(lfm)
 

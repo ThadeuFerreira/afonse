@@ -2,6 +2,7 @@
 Unit tests for similar_search helpers.
 These tests mock the FAISS index and database so no real data is needed.
 """
+
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -46,7 +47,13 @@ def test_find_similar_by_song_excludes_self(mock_faiss_resolve, mock_load_index)
     # FAISS returns songs [1, 2, 3]; song 1 is the query — should be excluded
     mock_faiss_resolve.return_value = [
         {"id": 1, "title": "Imagine", "artist": "John Lennon", "year": 1971, "score": 0.99},
-        {"id": 2, "title": "Blowin in the Wind", "artist": "Bob Dylan", "year": 1963, "score": 0.88},
+        {
+            "id": 2,
+            "title": "Blowin in the Wind",
+            "artist": "Bob Dylan",
+            "year": 1963,
+            "score": 0.88,
+        },
         {"id": 3, "title": "What's Going On", "artist": "Marvin Gaye", "year": 1971, "score": 0.75},
     ]
 
@@ -84,8 +91,10 @@ def test_min_score_filtering():
     """Results below min_score should be filtered out."""
     from music_teacher_ai.search.similar_search import find_similar_by_text
 
-    with patch("music_teacher_ai.search.similar_search._load_model") as mock_model, \
-         patch("music_teacher_ai.search.similar_search._search") as mock_search:
+    with (
+        patch("music_teacher_ai.search.similar_search._load_model") as mock_model,
+        patch("music_teacher_ai.search.similar_search._search") as mock_search,
+    ):
 
         mock_model.return_value.encode.return_value = np.ones((1, 384), dtype=np.float32)
         mock_search.return_value = [

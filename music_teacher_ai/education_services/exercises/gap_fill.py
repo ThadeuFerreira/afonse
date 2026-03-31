@@ -13,6 +13,7 @@ Two selection modes are supported:
 The architecture is open: future strategies (verbs, nouns, phrasal-verbs …)
 only need to provide a list of (start, end, word) spans to ``_apply_blanks``.
 """
+
 from __future__ import annotations
 
 import math
@@ -27,8 +28,8 @@ from typing import Literal, Optional
 # Constants
 # ---------------------------------------------------------------------------
 
-_BLANK_SCALE = 1.33          # blank is 33% longer than the word
-_MIN_BLANK = 3               # minimum underscore count
+_BLANK_SCALE = 1.33  # blank is 33% longer than the word
+_MIN_BLANK = 3  # minimum underscore count
 
 
 # ---------------------------------------------------------------------------
@@ -37,25 +38,26 @@ _MIN_BLANK = 3               # minimum underscore count
 
 SelectionMode = Literal["random", "manual"]
 
-Span = tuple[int, int, str]    # (start_char, end_char, word_text)
+Span = tuple[int, int, str]  # (start_char, end_char, word_text)
 
 
 @dataclass
 class GapFillExercise:
     song_title: str
     artist: str
-    text_with_gaps: str          # lyrics with blanks substituted
-    answer_key: list[str]        # words in order of appearance
+    text_with_gaps: str  # lyrics with blanks substituted
+    answer_key: list[str]  # words in order of appearance
     total_words: int
     blanked_count: int
     mode: SelectionMode
-    level: Optional[int] = None          # percentage used in random mode
+    level: Optional[int] = None  # percentage used in random mode
     selected_words: Optional[list[str]] = None  # words used in manual mode
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _blank_for(word: str) -> str:
     """Return an underscore blank scaled to the word's length."""
@@ -97,6 +99,7 @@ def _apply_blanks(text: str, spans: list[Span]) -> tuple[str, list[str]]:
 # ---------------------------------------------------------------------------
 # Public generation API
 # ---------------------------------------------------------------------------
+
 
 def generate_random(
     lyrics: str,
@@ -180,6 +183,7 @@ def generate_manual(
 # Formatting and export
 # ---------------------------------------------------------------------------
 
+
 def render_text(exercise: GapFillExercise) -> str:
     """Return the full exercise as a printable string with a header."""
     header = f"Song: {exercise.song_title}"
@@ -192,14 +196,16 @@ def render_text(exercise: GapFillExercise) -> str:
         else f"[Manual – words: {', '.join(exercise.selected_words or [])}]"
     )
 
-    return "\n".join([
-        header,
-        mode_note,
-        "",
-        exercise.text_with_gaps,
-        "",
-        f"({exercise.blanked_count} of {exercise.total_words} words blanked)",
-    ])
+    return "\n".join(
+        [
+            header,
+            mode_note,
+            "",
+            exercise.text_with_gaps,
+            "",
+            f"({exercise.blanked_count} of {exercise.total_words} words blanked)",
+        ]
+    )
 
 
 def export(

@@ -15,6 +15,7 @@ rate-limit responses:
     are better than none.
   - A JSON report is written to REPORTS_DIR on completion.
 """
+
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -102,9 +103,7 @@ def download_lyrics(initial_workers: int = 5) -> None:
 
     with get_session() as session:
         songs_with_lyrics = select(Lyrics.song_id)
-        songs = session.exec(
-            select(Song).where(~Song.id.in_(songs_with_lyrics))
-        ).all()
+        songs = session.exec(select(Song).where(~Song.id.in_(songs_with_lyrics))).all()
 
         artist_map: dict[int, str] = {}
         for song in songs:
@@ -188,11 +187,13 @@ def download_lyrics(initial_workers: int = 5) -> None:
                     elif status == "not_found":
                         fail_batch.append((song, "Lyrics not found on Genius"))
                         if len(debug_not_found_samples) < 25:
-                            debug_not_found_samples.append({
-                                "song_id": str(song.id),
-                                "title": song.title,
-                                "artist": artist_map[song.id],
-                            })
+                            debug_not_found_samples.append(
+                                {
+                                    "song_id": str(song.id),
+                                    "title": song.title,
+                                    "artist": artist_map[song.id],
+                                }
+                            )
                         report.add_error(
                             song_id=song.id,
                             title=song.title,
@@ -242,26 +243,29 @@ def download_lyrics(initial_workers: int = 5) -> None:
                                 title=song.title,
                                 warnings="; ".join(vr.warnings),
                             )
-                        session.add(Lyrics(
-                            song_id=song.id,
-                            lyrics_text=text,
-                            word_count=wc,
-                            unique_words=uw,
-                        ))
+                        session.add(
+                            Lyrics(
+                                song_id=song.id,
+                                lyrics_text=text,
+                                word_count=wc,
+                                unique_words=uw,
+                            )
+                        )
                     session.commit()
                 downloaded += sum(
-                    1 for song, _ in ok_batch
-                    if not any(song.id == fs.id for fs, _ in fail_batch)
+                    1 for song, _ in ok_batch if not any(song.id == fs.id for fs, _ in fail_batch)
                 )
 
             if fail_batch:
                 with get_session() as session:
                     for song, error_msg in fail_batch:
-                        session.add(IngestionFailure(
-                            song_id=song.id,
-                            stage="lyrics",
-                            error_message=error_msg,
-                        ))
+                        session.add(
+                            IngestionFailure(
+                                song_id=song.id,
+                                stage="lyrics",
+                                error_message=error_msg,
+                            )
+                        )
                     session.commit()
                 failed += len(fail_batch)
 
@@ -334,6 +338,7 @@ def download_lyrics(initial_workers: int = 5) -> None:
             )
         elif downloaded == 0 and not_found == total:
             from music_teacher_ai.core.lyrics_client import _get_token
+
             token_present = bool(_get_token())
             if token_present:
                 report.add_event(

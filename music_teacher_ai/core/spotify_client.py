@@ -27,7 +27,7 @@ class TrackMetadata:
     title: str
     artist: str
     album: str
-    spotify_id: Optional[str] = None        # None when sourced from MusicBrainz/Last.fm
+    spotify_id: Optional[str] = None  # None when sourced from MusicBrainz/Last.fm
     artist_spotify_id: Optional[str] = None  # None when sourced from MusicBrainz/Last.fm
     release_year: Optional[int] = None
     popularity: Optional[int] = None

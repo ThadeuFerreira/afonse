@@ -2,24 +2,29 @@
 Unit tests for music_teacher_ai/pipeline/reporter.py.
 No database or external API required.
 """
+
 import json
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_report(tmp_path, monkeypatch, stage="test"):
     monkeypatch.setattr("music_teacher_ai.config.settings.REPORTS_DIR", tmp_path / "reports")
     # Re-patch the module-level import inside reporter
     import music_teacher_ai.pipeline.reporter as mod
+
     monkeypatch.setattr(mod, "REPORTS_DIR", tmp_path / "reports")
     from music_teacher_ai.pipeline.reporter import PipelineReport
+
     return PipelineReport(stage)
 
 
 # ---------------------------------------------------------------------------
 # Counters
 # ---------------------------------------------------------------------------
+
 
 def test_increment_basic(tmp_path, monkeypatch):
     report = make_report(tmp_path, monkeypatch)
@@ -53,6 +58,7 @@ def test_increment_from_zero(tmp_path, monkeypatch):
 # Events
 # ---------------------------------------------------------------------------
 
+
 def test_add_event(tmp_path, monkeypatch):
     report = make_report(tmp_path, monkeypatch)
     report.add_event("rate_limit", new_workers=2, wait_seconds=60)
@@ -76,6 +82,7 @@ def test_add_multiple_events(tmp_path, monkeypatch):
 # Errors
 # ---------------------------------------------------------------------------
 
+
 def test_add_error(tmp_path, monkeypatch):
     report = make_report(tmp_path, monkeypatch)
     report.add_error(song_id=1, error="404 not found")
@@ -86,6 +93,7 @@ def test_add_error(tmp_path, monkeypatch):
 
 def test_error_cap(tmp_path, monkeypatch):
     from music_teacher_ai.pipeline import reporter as mod
+
     cap = mod._MAX_INLINE_ERRORS
 
     report = make_report(tmp_path, monkeypatch)
@@ -98,6 +106,7 @@ def test_error_cap(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # save() — JSON structure
 # ---------------------------------------------------------------------------
+
 
 def test_save_creates_file(tmp_path, monkeypatch):
     report = make_report(tmp_path, monkeypatch, stage="lyrics")

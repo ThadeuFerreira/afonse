@@ -40,6 +40,7 @@ Stop conditions (first one wins)
   4. all variants exhausted / saturated
   5. _GLOBAL_DUP_STOP consecutive fully-duplicate pages
 """
+
 import time
 from collections import deque
 from typing import Optional
@@ -62,15 +63,16 @@ _PAGE_SIZE = 50
 _DEFAULT_MAX_REQUESTS = 200
 _DEFAULT_MAX_RUNTIME = 300
 _DEFAULT_RANDOM_PAGE_MAX = 50
-_DUP_THRESHOLD = 0.9        # variant dup ratio above which it's considered saturated
-_MIN_VARIANT_TRIES = 3      # minimum page tries before checking saturation
-_GLOBAL_DUP_STOP = 10       # consecutive all-dup pages across all variants → stop
+_DUP_THRESHOLD = 0.9  # variant dup ratio above which it's considered saturated
+_MIN_VARIANT_TRIES = 3  # minimum page tries before checking saturation
+_GLOBAL_DUP_STOP = 10  # consecutive all-dup pages across all variants → stop
 _MAX_LIMIT = 1000
 
 
 # ---------------------------------------------------------------------------
 # Normalisation helpers
 # ---------------------------------------------------------------------------
+
 
 def _normalize(s: str) -> str:
     return normalize_text(s)
@@ -88,6 +90,7 @@ def _load_existing_keys() -> set[str]:
 # ---------------------------------------------------------------------------
 # Variant builders
 # ---------------------------------------------------------------------------
+
 
 def _build_variants(
     genre: Optional[str],
@@ -113,6 +116,7 @@ def _build_variants(
 # ---------------------------------------------------------------------------
 # DB insert
 # ---------------------------------------------------------------------------
+
 
 def _insert_candidates(
     candidates: list[CandidateSong],
@@ -211,6 +215,7 @@ def _run_post_pipeline(observer: PipelineObserver) -> None:
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 def enrich_database(
     genre: Optional[str] = None,
     artist: Optional[str] = None,
@@ -249,10 +254,14 @@ def enrich_database(
     limit = min(limit, _MAX_LIMIT)
 
     from music_teacher_ai.config.settings import LASTFM_API_KEY
+
     api_key: str = LASTFM_API_KEY or ""
 
     result = EnrichmentResult(
-        genre=genre, artist=artist, year=year, requested_limit=limit,
+        genre=genre,
+        artist=artist,
+        year=year,
+        requested_limit=limit,
     )
     report, criteria = _build_report(
         result,
@@ -298,7 +307,7 @@ def enrich_database(
             # Cap to remaining capacity before inserting
             capacity = limit - result.new_songs_inserted
             novel = [c for c in candidates if _song_key(c.title, c.artist) not in existing_keys]
-            known  = [c for c in candidates if _song_key(c.title, c.artist) in existing_keys]
+            known = [c for c in candidates if _song_key(c.title, c.artist) in existing_keys]
             trimmed = known + novel[:capacity]
 
             inserted, skipped = _insert_candidates(trimmed, existing_keys)

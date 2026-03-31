@@ -10,15 +10,92 @@ from music_teacher_ai.pipeline.reporter import PipelineReport
 console = Console()
 
 _STOPWORDS = {
-    "i", "me", "my", "myself", "we", "our", "you", "your", "he", "she", "it",
-    "they", "them", "what", "which", "who", "this", "that", "these", "those",
-    "am", "is", "are", "was", "were", "be", "been", "being", "have", "has",
-    "had", "do", "does", "did", "will", "would", "could", "should", "may",
-    "might", "shall", "can", "need", "dare", "ought", "used", "to", "of",
-    "in", "for", "on", "with", "at", "by", "from", "as", "into", "through",
-    "during", "before", "after", "above", "below", "between", "out", "off",
-    "over", "under", "again", "then", "so", "if", "or", "and", "but", "not",
-    "no", "nor", "the", "a", "an", "up", "down", "just", "more", "also",
+    "i",
+    "me",
+    "my",
+    "myself",
+    "we",
+    "our",
+    "you",
+    "your",
+    "he",
+    "she",
+    "it",
+    "they",
+    "them",
+    "what",
+    "which",
+    "who",
+    "this",
+    "that",
+    "these",
+    "those",
+    "am",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "shall",
+    "can",
+    "need",
+    "dare",
+    "ought",
+    "used",
+    "to",
+    "of",
+    "in",
+    "for",
+    "on",
+    "with",
+    "at",
+    "by",
+    "from",
+    "as",
+    "into",
+    "through",
+    "during",
+    "before",
+    "after",
+    "above",
+    "below",
+    "between",
+    "out",
+    "off",
+    "over",
+    "under",
+    "again",
+    "then",
+    "so",
+    "if",
+    "or",
+    "and",
+    "but",
+    "not",
+    "no",
+    "nor",
+    "the",
+    "a",
+    "an",
+    "up",
+    "down",
+    "just",
+    "more",
+    "also",
 }
 
 
@@ -37,9 +114,7 @@ def build_vocabulary_index(rebuild: bool = False) -> None:
         else:
             indexed_ids = {
                 row if isinstance(row, int) else row[0]
-                for row in session.exec(
-                    select(VocabularyIndex.song_id).distinct()
-                ).all()
+                for row in session.exec(select(VocabularyIndex.song_id).distinct()).all()
             }
 
         lyrics_rows = session.exec(select(Lyrics)).all()
@@ -66,5 +141,7 @@ def build_vocabulary_index(rebuild: bool = False) -> None:
     report.set("total_word_entries", total_words)
     report_path = report.save()
 
-    console.print(f"[green]Vocabulary index complete.[/green] indexed={indexed} songs, {total_words} word entries")
+    console.print(
+        f"[green]Vocabulary index complete.[/green] indexed={indexed} songs, {total_words} word entries"
+    )
     console.print(f"[dim]Report: {report_path}[/dim]")

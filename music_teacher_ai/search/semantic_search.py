@@ -9,6 +9,7 @@ from music_teacher_ai.database.sqlite import get_session
 
 def _load_model():
     from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(EMBEDDING_MODEL)
 
 
@@ -19,9 +20,7 @@ def _faiss_ids_to_songs(faiss_ids: list[int], scores: list[float]) -> list[dict]
         for faiss_id, score in zip(faiss_ids, scores):
             if faiss_id < 0:
                 continue
-            emb = session.exec(
-                select(Embedding).where(Embedding.faiss_id == faiss_id)
-            ).first()
+            emb = session.exec(select(Embedding).where(Embedding.faiss_id == faiss_id)).first()
             if not emb:
                 continue
             song = session.get(Song, emb.song_id)

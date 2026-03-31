@@ -12,6 +12,7 @@ Verifies:
 - Nearest-neighbor search returns the correct result
 - Index can be saved and reloaded from disk
 """
+
 import numpy as np
 
 
@@ -62,9 +63,9 @@ def test_semantic_similarity_ordering():
     model = SentenceTransformer(EMBEDDING_MODEL)
     vecs = model.encode(
         [
-            "I have a dream about freedom",    # anchor
-            "Dreaming of liberty and hope",    # similar
-            "The stock market fell sharply",   # dissimilar
+            "I have a dream about freedom",  # anchor
+            "Dreaming of liberty and hope",  # similar
+            "The stock market fell sharply",  # dissimilar
         ],
         normalize_embeddings=True,
     )
@@ -99,7 +100,9 @@ def test_faiss_index_add_and_search():
     distances, indices = index.search(query, k=1)
 
     assert indices[0][0] == 2, f"Expected position 2, got {indices[0][0]}"
-    assert abs(distances[0][0] - 1.0) < 1e-5, f"Self-similarity should be 1.0, got {distances[0][0]}"
+    assert (
+        abs(distances[0][0] - 1.0) < 1e-5
+    ), f"Self-similarity should be 1.0, got {distances[0][0]}"
 
 
 def test_faiss_index_save_and_reload(tmp_path):

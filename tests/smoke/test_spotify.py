@@ -11,6 +11,7 @@ NOTE: Since November 2024, Spotify requires the developer app owner to have an
 active Premium subscription. Tests that hit the API will be skipped with a clear
 message if a 403 is returned, rather than failing.
 """
+
 import pytest
 
 from tests.smoke.conftest import requires_spotify
@@ -18,6 +19,7 @@ from tests.smoke.conftest import requires_spotify
 
 def _skip_if_premium_required(exc):
     from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError
+
     if isinstance(exc, SpotifyPremiumRequiredError):
         pytest.skip(str(exc))
     raise exc

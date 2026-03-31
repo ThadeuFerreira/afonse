@@ -42,4 +42,3 @@ def keyword_search_with_expansion(req: SearchRequest) -> dict:
 
 def semantic_query(query: str, top_k: int = 10):
     return semantic_search(query, top_k=top_k)
-

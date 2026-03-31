@@ -38,10 +38,10 @@ def parse_natural_language(query: str) -> ParsedQuery:
     # Decade detection: "90s" → 1990–1999, "1990s" → 1990–1999, "2020s" → 2020–2029
     decade_match = _DECADE_RE.search(query)
     if decade_match:
-        decade_str = decade_match.group(1)          # e.g. "90s" or "1990s"
-        digits = decade_str.rstrip("s")             # "90" or "1990"
+        decade_str = decade_match.group(1)  # e.g. "90s" or "1990s"
+        digits = decade_str.rstrip("s")  # "90" or "1990"
         decade_val = int(digits)
-        if decade_val < 100:                        # two-digit shorthand: 90 → 1990
+        if decade_val < 100:  # two-digit shorthand: 90 → 1990
             decade_val += 1900
         result.year_min = decade_val
         result.year_max = decade_val + 9

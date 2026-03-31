@@ -4,6 +4,7 @@ Lesson builder.
 Orchestrates fill-in-blank exercises, vocabulary analysis, and phrasal verb
 detection into a single Lesson object that can be serialised for API responses.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,12 +32,13 @@ from music_teacher_ai.education_services.vocabulary.analyzer import (
 # Data types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Lesson:
     song_id: int
     song_title: str
     artist: str
-    lyrics_preview: str             # first 200 chars of lyrics
+    lyrics_preview: str  # first 200 chars of lyrics
     exercise: FillInBlankExercise
     vocabulary: VocabularyAnalysis
     phrasal_verbs: PhrasalVerbReport
@@ -53,10 +55,7 @@ class Lesson:
                 "answer_key": self.exercise.answer_key,
                 "total_words": self.exercise.total_words,
                 "blanked_count": self.exercise.blanked_count,
-                "blanks": [
-                    {"number": b.number, "word": b.word}
-                    for b in self.exercise.blanks
-                ],
+                "blanks": [{"number": b.number, "word": b.word} for b in self.exercise.blanks],
             },
             "vocabulary": {
                 "total_unique_words": self.vocabulary.total_unique_words,
@@ -64,10 +63,7 @@ class Lesson:
                 "level_counts": self.vocabulary.level_counts,
                 "level_percentages": self.vocabulary.level_percentages,
                 "words_by_level": {
-                    level: [
-                        {"word": e.word, "occurrences": e.occurrences}
-                        for e in entries
-                    ]
+                    level: [{"word": e.word, "occurrences": e.occurrences} for e in entries]
                     for level, entries in self.vocabulary.words_by_level.items()
                     if entries
                 },
@@ -91,6 +87,7 @@ class Lesson:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def build_lesson(
     song_id: int,

@@ -52,12 +52,15 @@ def _require_admin(
             detail="Config endpoint only accessible from localhost",
         )
     from music_teacher_ai.config.credentials import verify_admin_token
+
     if not verify_admin_token(credentials.credentials):
         raise HTTPException(status_code=401, detail="Invalid admin token")
+
 
 @asynccontextmanager
 async def _lifespan(app_: FastAPI):
     from music_teacher_ai.demo.loader import auto_load_demo_if_needed
+
     auto_load_demo_if_needed()
     yield
 
@@ -100,15 +103,18 @@ def health():
 # Config endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.get("/config")
 def get_config():
     """Return current credential status — values are masked, no auth required."""
     from music_teacher_ai.config.credentials import current_status
+
     return current_status()
 
 
 class ConfigUpdateRequest(BaseModel):
     """Map of credential key → new value. Only recognised keys are accepted."""
+
     credentials: dict[str, str]
 
 
@@ -150,9 +156,7 @@ def status():
                 select(func.count()).select_from(VocabularyIndex)
             ).one(),
             "songs_with_artists": session.exec(
-                select(func.count())
-                .select_from(Song)
-                .join(Artist, Song.artist_id == Artist.id)
+                select(func.count()).select_from(Song).join(Artist, Song.artist_id == Artist.id)
             ).one(),
         }
 
@@ -201,14 +205,13 @@ def simple_search(
     no embeddings, no metadata parsing.  Reliable even when other fields are
     corrupted.
     """
+
     def _query_local() -> list[dict]:
         with get_session() as session:
             songs = session.exec(
                 select(Song, Artist)
                 .join(Artist, Song.artist_id == Artist.id)
-                .where(
-                    Song.title.ilike(f"%{q}%") | Artist.name.ilike(f"%{q}%")
-                )
+                .where(Song.title.ilike(f"%{q}%") | Artist.name.ilike(f"%{q}%"))
                 .limit(limit)
             ).all()
         return [
@@ -232,8 +235,7 @@ def simple_search(
 
         expansion_result = run_expansion_sync(artist=q)
         expansion_triggered = (
-            expansion_result.get("processed", 0) > 0
-            or expansion_result.get("staged", 0) > 0
+            expansion_result.get("processed", 0) > 0 or expansion_result.get("staged", 0) > 0
         )
         if expansion_triggered:
             results = _query_local()
@@ -257,8 +259,13 @@ def keyword_search(
 ):
     return keyword_search_with_expansion(
         SearchRequest(
-        word=word, year=year, year_min=year_min,
-        year_max=year_max, artist=artist, genre=genre, limit=limit,
+            word=word,
+            year=year,
+            year_min=year_min,
+            year_max=year_max,
+            artist=artist,
+            genre=genre,
+            limit=limit,
         )
     )
 
@@ -278,6 +285,7 @@ def similar_by_song(
     min_score: float = Query(0.0),
 ):
     from music_teacher_ai.search.similar_search import find_similar_by_song
+
     try:
         return find_similar_by_song(song_id, top_k=top_k, min_score=min_score)
     except ValueError as exc:
@@ -289,6 +297,7 @@ def similar_by_song(
 @app.post("/similar/text")
 def similar_by_text(req: SimilarTextRequest):
     from music_teacher_ai.search.similar_search import find_similar_by_text
+
     try:
         return find_similar_by_text(req.text, top_k=req.top_k, min_score=req.min_score)
     except FileNotFoundError as exc:
@@ -298,6 +307,7 @@ def similar_by_text(req: SimilarTextRequest):
 # ---------------------------------------------------------------------------
 # Enrichment
 # ---------------------------------------------------------------------------
+
 
 @app.post("/enrich")
 def enrich(req: EnrichRequest):
@@ -323,6 +333,7 @@ def enrich(req: EnrichRequest):
 # ---------------------------------------------------------------------------
 # Playlists
 # ---------------------------------------------------------------------------
+
 
 class PlaylistCreateRequest(BaseModel):
     name: str
@@ -388,6 +399,7 @@ def refresh_playlist(playlist_id: str):
 # Education endpoints
 # ---------------------------------------------------------------------------
 
+
 def _get_lyrics_text(song_id: int) -> str:
     """Fetch lyrics text for a song or raise 404."""
     with get_session() as session:
@@ -418,8 +430,13 @@ def education_exercise(
 
     title, artist_name = _get_song_meta(song_id)
     lyrics = _get_lyrics_text(song_id)
-    ex = generate(lyrics, song_title=title, artist=artist_name,
-                  num_blanks=num_blanks, min_word_length=min_word_length)
+    ex = generate(
+        lyrics,
+        song_title=title,
+        artist=artist_name,
+        num_blanks=num_blanks,
+        min_word_length=min_word_length,
+    )
     return {
         "song_id": song_id,
         "song_title": ex.song_title,
@@ -442,8 +459,7 @@ def education_vocabulary(
 
     title, artist_name = _get_song_meta(song_id)
     lyrics = _get_lyrics_text(song_id)
-    result = analyze(lyrics, song_title=title, artist=artist_name,
-                     min_word_length=min_word_length)
+    result = analyze(lyrics, song_title=title, artist=artist_name, min_word_length=min_word_length)
     return {
         "song_id": song_id,
         "song_title": result.song_title,
@@ -488,10 +504,10 @@ def education_phrasal_verbs(song_id: int):
 
 class GapFillRequest(BaseModel):
     song_id: int
-    mode: str = "random"            # "random" | "manual"
-    level: int = 20                 # percentage for random mode (1–100)
+    mode: str = "random"  # "random" | "manual"
+    level: int = 20  # percentage for random mode (1–100)
     words: Optional[list[str]] = None  # word list for manual mode
-    output: Optional[str] = None    # filename override
+    output: Optional[str] = None  # filename override
 
 
 @app.post("/exercise/gap")
@@ -522,7 +538,7 @@ def exercise_gap(req: GapFillRequest):
     # names that contain path separators or attempt directory traversal.
     safe_filename: Optional[str] = None
     if req.output is not None:
-        safe_filename = Path(req.output).name   # strips any leading directory parts
+        safe_filename = Path(req.output).name  # strips any leading directory parts
         resolved = (EXERCISES_DIR / safe_filename).resolve()
         if not str(resolved).startswith(str(EXERCISES_DIR.resolve())):
             raise HTTPException(status_code=400, detail="Invalid output filename")
@@ -575,6 +591,7 @@ _CONTENT_TYPES = {
     "m3u": "audio/x-mpegurl",
     "m3u8": "application/x-mpegURL",
 }
+
 
 @app.get("/playlists/{playlist_id}/export")
 def export_playlist(

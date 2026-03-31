@@ -86,9 +86,7 @@ def status():
         songs = session.exec(select(func.count()).select_from(Song)).one()
         lyrics = session.exec(select(func.count()).select_from(Lyrics)).one()
         embeddings = session.exec(select(func.count()).select_from(Embedding)).one()
-        years = session.exec(
-            select(func.count(func.distinct(Chart.date)))
-        ).one()
+        years = session.exec(select(func.count(func.distinct(Chart.date)))).one()
 
     from music_teacher_ai.config.settings import DATABASE_PATH
 
@@ -134,12 +132,20 @@ def update(
 
 @app.command()
 def enrich(
-    genre: Optional[str] = typer.Option(None, "--genre", help="Last.fm genre tag to search, e.g. 'jazz'."),
-    artist: Optional[str] = typer.Option(None, "--artist", help="Artist name to fetch top tracks for."),
+    genre: Optional[str] = typer.Option(
+        None, "--genre", help="Last.fm genre tag to search, e.g. 'jazz'."
+    ),
+    artist: Optional[str] = typer.Option(
+        None, "--artist", help="Artist name to fetch top tracks for."
+    ),
     year: Optional[int] = typer.Option(None, "--year", help="Release year to search."),
     limit: int = typer.Option(100, "--limit", help="Maximum new songs to insert (max 1000)."),
-    max_pages: int = typer.Option(20, "--max-pages", hidden=True, help="Maximum API pages to fetch."),
-    no_pipeline: bool = typer.Option(False, "--no-pipeline", help="Insert songs only; skip metadata/lyrics/embedding stages."),
+    max_pages: int = typer.Option(
+        20, "--max-pages", hidden=True, help="Maximum API pages to fetch."
+    ),
+    no_pipeline: bool = typer.Option(
+        False, "--no-pipeline", help="Insert songs only; skip metadata/lyrics/embedding stages."
+    ),
 ):
     """
     Expand the knowledge base with songs from external APIs.
@@ -191,9 +197,8 @@ def retry_failed():
 def rebuild_embeddings():
     """Rebuild the entire FAISS embedding index."""
     from music_teacher_ai.pipeline.embedding_pipeline import generate_embeddings
+
     generate_embeddings(rebuild=True)
-
-
 
 
 @app.command()
@@ -232,8 +237,11 @@ def search(
     if not results:
         console.print("[yellow]No results found locally.[/yellow]")
         from music_teacher_ai.pipeline.expansion import trigger_expansion
+
         if trigger_expansion(genre=genre, artist=artist, year=year, word=word):
-            console.print("[dim]Triggering discovery job — future searches may return new songs.[/dim]")
+            console.print(
+                "[dim]Triggering discovery job — future searches may return new songs.[/dim]"
+            )
         return
 
     if lyrics:
@@ -246,15 +254,11 @@ def search(
         lyrics_by_song_id: dict[int, str] = {}
         if song_ids:
             with get_session() as session:
-                lyric_rows = session.exec(
-                    select(Lyrics).where(Lyrics.song_id.in_(song_ids))
-                ).all()
+                lyric_rows = session.exec(select(Lyrics).where(Lyrics.song_id.in_(song_ids))).all()
             for lyr in lyric_rows:
                 # Keep table readable while still exposing lyrics from search.
                 text = (lyr.lyrics_text or "").strip().replace("\n", " ")
-                lyrics_by_song_id[lyr.song_id] = (
-                    text[:200] + ("..." if len(text) > 200 else "")
-                )
+                lyrics_by_song_id[lyr.song_id] = text[:200] + ("..." if len(text) > 200 else "")
 
         for row in results:
             song_id = row.get("song_id") or row.get("id")
@@ -314,6 +318,7 @@ def similar(
 # Exercise sub-commands  (music-teacher exercise <sub-command>)
 # ---------------------------------------------------------------------------
 
+
 @exercise_app.command("show")
 def exercise_show(
     song_id: int = typer.Argument(..., help="Song database ID"),
@@ -337,15 +342,22 @@ def exercise_show(
         title = song.title if song else ""
         artist_name = artist_obj.name if artist_obj else ""
 
-    ex = generate(lyr.lyrics_text, song_title=title, artist=artist_name,
-                  num_blanks=num_blanks, min_word_length=min_word_length)
+    ex = generate(
+        lyr.lyrics_text,
+        song_title=title,
+        artist=artist_name,
+        num_blanks=num_blanks,
+        min_word_length=min_word_length,
+    )
 
-    console.print(Panel(
-        f"[bold]{ex.song_title}[/bold] — {ex.artist}",
-        title="Fill-in-the-Blank Exercise",
-        border_style="cyan",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            f"[bold]{ex.song_title}[/bold] — {ex.artist}",
+            title="Fill-in-the-Blank Exercise",
+            border_style="cyan",
+            expand=False,
+        )
+    )
     console.print()
     console.print(ex.text_with_blanks)
     console.print()
@@ -390,12 +402,14 @@ def exercise_lesson(
         min_word_length=min_word_length,
     )
 
-    console.print(Panel(
-        f"[bold]{les.song_title}[/bold] — {les.artist}",
-        title="Music Lesson",
-        border_style="cyan",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            f"[bold]{les.song_title}[/bold] — {les.artist}",
+            title="Music Lesson",
+            border_style="cyan",
+            expand=False,
+        )
+    )
 
     # Exercise
     console.print("\n[bold cyan]── Fill-in-the-Blank Exercise ──[/bold cyan]")
@@ -440,12 +454,26 @@ def exercise_generate(
         "--song",
         help="Song ID (numeric) or song title to search for.",
     ),
-    semantic: Optional[str] = typer.Option(None, "--semantic", help="Semantic query, e.g. 'songs about dreams'."),
-    playlist: Optional[str] = typer.Option(None, "--playlist", help="Playlist slug — generates one section per song."),
-    words: Optional[str] = typer.Option(None, "--words", help="Space-separated words to blank (manual mode), e.g. 'imagine world heaven'."),
-    random_mode: bool = typer.Option(False, "--random", help="Randomly blank words based on --level."),
-    level: int = typer.Option(20, "--level", help="Percentage of words to blank in random mode (10, 20, or 30)."),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output filename (default: exercise_YYYYMMDD_HHMM.txt)."),
+    semantic: Optional[str] = typer.Option(
+        None, "--semantic", help="Semantic query, e.g. 'songs about dreams'."
+    ),
+    playlist: Optional[str] = typer.Option(
+        None, "--playlist", help="Playlist slug — generates one section per song."
+    ),
+    words: Optional[str] = typer.Option(
+        None,
+        "--words",
+        help="Space-separated words to blank (manual mode), e.g. 'imagine world heaven'.",
+    ),
+    random_mode: bool = typer.Option(
+        False, "--random", help="Randomly blank words based on --level."
+    ),
+    level: int = typer.Option(
+        20, "--level", help="Percentage of words to blank in random mode (10, 20, or 30)."
+    ),
+    output: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output filename (default: exercise_YYYYMMDD_HHMM.txt)."
+    ),
 ):
     """
     Generate a listening fill-the-gaps exercise and export it to a .txt file.
@@ -474,12 +502,15 @@ def exercise_generate(
         console.print("[red]Provide --song, --semantic, or --playlist.[/red]")
         raise typer.Exit(1)
     if not words and not random_mode:
-        console.print("[red]Provide --words for manual mode or --random for random selection.[/red]")
+        console.print(
+            "[red]Provide --words for manual mode or --random for random selection.[/red]"
+        )
         raise typer.Exit(1)
 
     def _expand_and_exit(word: Optional[str] = None) -> None:
         """Trigger background expansion using the same path as the search command."""
         from music_teacher_ai.pipeline.jobs import get_job_runner
+
         triggered = get_job_runner().trigger_expansion(word=word)
         if triggered:
             console.print(
@@ -492,6 +523,7 @@ def exercise_generate(
 
     if playlist:
         from music_teacher_ai.playlists.manager import get as get_playlist
+
         try:
             pl = get_playlist(playlist)
         except FileNotFoundError as exc:
@@ -510,6 +542,7 @@ def exercise_generate(
 
     elif semantic:
         from music_teacher_ai.search.semantic_search import semantic_search
+
         try:
             results = semantic_search(semantic, top_k=5)
         except FileNotFoundError as exc:
@@ -519,7 +552,7 @@ def exercise_generate(
             console.print("[yellow]No songs found for that query.[/yellow]")
             _expand_and_exit(word=semantic)
         with get_session() as session:
-            for r in results:   # walk all candidates until one has lyrics
+            for r in results:  # walk all candidates until one has lyrics
                 lyr = session.exec(select(Lyrics).where(Lyrics.song_id == r["id"])).first()
                 if lyr:
                     entries.append((lyr.lyrics_text, r["title"], r["artist"]))
@@ -584,6 +617,7 @@ def exercise_generate(
 
     # ---- export ----
     from music_teacher_ai.education_services.exercises.gap_fill import export_text
+
     out_path = export_text(full_text, EXERCISES_DIR, output)
 
     console.print(f"[green]Exercise saved to {out_path}[/green]")
@@ -596,7 +630,8 @@ def doctor(
     skip_genius: bool = typer.Option(False, "--skip-genius", help="Skip Genius API check."),
     skip_billboard: bool = typer.Option(False, "--skip-billboard", help="Skip Billboard check."),
     clear_cache: Optional[str] = typer.Option(
-        None, "--clear-cache",
+        None,
+        "--clear-cache",
         help="Delete cached API responses: 'all', 'genius', 'spotify', 'lastfm', or 'null' (null-result entries only).",
     ),
 ):
@@ -653,12 +688,15 @@ def doctor(
     console.print(cache_table)
 
     if total_null > 50:
-        console.print(Panel(
-            f"[yellow]{total_null} null cache entries detected.[/yellow]\n"
-            "This usually means lyrics were fetched without a valid Genius token.\n"
-            "Fix: [cyan]music-teacher doctor --clear-cache null[/cyan]",
-            border_style="yellow", expand=False,
-        ))
+        console.print(
+            Panel(
+                f"[yellow]{total_null} null cache entries detected.[/yellow]\n"
+                "This usually means lyrics were fetched without a valid Genius token.\n"
+                "Fix: [cyan]music-teacher doctor --clear-cache null[/cyan]",
+                border_style="yellow",
+                expand=False,
+            )
+        )
 
     results: list[tuple[str, str, str]] = []  # (component, status, detail)
 
@@ -696,6 +734,7 @@ def doctor(
             from spotipy.exceptions import SpotifyException
 
             from music_teacher_ai.core.spotify_client import SpotifyPremiumRequiredError, get_client
+
             sp = get_client()
             try:
                 r = sp.search(q="Imagine", type="track", limit=1)
@@ -713,6 +752,7 @@ def doctor(
                 SpotifyPremiumRequiredError,
                 search_track,
             )
+
             meta = search_track("Imagine", "John Lennon")
             assert meta is not None, "Returned None"
             assert meta.spotify_id
@@ -722,6 +762,7 @@ def doctor(
                 SpotifyPremiumRequiredError,
                 search_track,
             )
+
             meta = search_track("Imagine", "John Lennon")
             assert meta and meta.energy is not None
 
@@ -731,6 +772,7 @@ def doctor(
     if not skip_billboard:
         with check("Billboard: fetch Hot 100 for year 2000"):
             from music_teacher_ai.core.billboard_client import fetch_chart_for_year
+
             entries = fetch_chart_for_year(2000)
             assert len(entries) == 100, f"Got {len(entries)} entries"
 
@@ -740,6 +782,7 @@ def doctor(
     if not skip_genius:
         with check("Genius: fetch lyrics for 'Imagine'"):
             from music_teacher_ai.core.lyrics_client import fetch_lyrics
+
             lyrics = fetch_lyrics("Imagine", "John Lennon")
             assert lyrics and len(lyrics) > 100, "Lyrics too short or None"
 
@@ -748,6 +791,7 @@ def doctor(
     # ------------------------------------------------------------------
     with check("MusicBrainz: search 'Imagine'"):
         from music_teacher_ai.core.musicbrainz_client import search_track as mb_search
+
         meta = mb_search("Imagine", "John Lennon")
         assert meta is not None, "No result from MusicBrainz"
         assert meta.title
@@ -760,6 +804,7 @@ def doctor(
 
     with check("Last.fm: get tags for 'Imagine'"):
         from music_teacher_ai.core.lastfm_client import get_tags, is_configured
+
         if not is_configured():
             raise AssertionError("LASTFM_API_KEY not set — skipping")
         tags = get_tags("Imagine", "John Lennon")
@@ -783,6 +828,7 @@ def doctor(
                 importlib.reload(_db)
                 _db.create_db()
                 from music_teacher_ai.database.models import Artist as _Artist
+
                 with _db.get_session() as s:
                     a = _Artist(name="__smoke_test__")
                     s.add(a)
@@ -806,6 +852,7 @@ def doctor(
         from sentence_transformers import SentenceTransformer
 
         from music_teacher_ai.config.settings import EMBEDDING_MODEL
+
         SentenceTransformer(EMBEDDING_MODEL)
 
     with check("Embeddings: correct vector shape (384-dim)"):
@@ -813,6 +860,7 @@ def doctor(
         from sentence_transformers import SentenceTransformer
 
         from music_teacher_ai.config.settings import EMBEDDING_DIM, EMBEDDING_MODEL
+
         model = SentenceTransformer(EMBEDDING_MODEL)
         vec = model.encode(["test"], normalize_embeddings=True)
         assert vec.shape == (1, EMBEDDING_DIM), f"Got {vec.shape}"
@@ -825,6 +873,7 @@ def doctor(
         import numpy as np
 
         from music_teacher_ai.config.settings import EMBEDDING_DIM
+
         idx = faiss.IndexFlatIP(EMBEDDING_DIM)
         v = np.random.randn(1, EMBEDDING_DIM).astype(np.float32)
         v /= np.linalg.norm(v)
@@ -861,9 +910,11 @@ def doctor(
 # Playlist sub-commands
 # ---------------------------------------------------------------------------
 
+
 def _print_playlist(playlist) -> None:
     """Pretty-print a single playlist to the terminal."""
     from rich.panel import Panel
+
     header = f"[bold]{playlist.name}[/bold]"
     if playlist.description:
         header += f"\n[dim]{playlist.description}[/dim]"
@@ -885,14 +936,18 @@ def playlist_create(
     name: str = typer.Argument(..., help="Playlist name, e.g. 'Dream Vocabulary'"),
     description: Optional[str] = typer.Option(None, "--description", "-d"),
     word: Optional[str] = typer.Option(None, help="Keyword to search in lyrics"),
-    song: Optional[str] = typer.Option(None, "--song", help="Song title to search for, e.g. 'Dream On'"),
+    song: Optional[str] = typer.Option(
+        None, "--song", help="Song title to search for, e.g. 'Dream On'"
+    ),
     year: Optional[int] = typer.Option(None),
     year_min: Optional[int] = typer.Option(None),
     year_max: Optional[int] = typer.Option(None),
     artist: Optional[str] = typer.Option(None),
     genre: Optional[str] = typer.Option(None),
     query: Optional[str] = typer.Option(None, "--query", "-q", help="Semantic/theme query"),
-    similar_text: Optional[str] = typer.Option(None, "--similar-text", help="Text to find similar songs for"),
+    similar_text: Optional[str] = typer.Option(
+        None, "--similar-text", help="Text to find similar songs for"
+    ),
     similar_song_id: Optional[int] = typer.Option(None, "--similar-song-id"),
     limit: int = typer.Option(20, help="Max songs in playlist (hard cap: 100)"),
 ):
@@ -980,7 +1035,9 @@ def playlist_delete(
 def playlist_export(
     playlist_id: str = typer.Argument(..., help="Playlist slug"),
     fmt: str = typer.Option("m3u", "--format", "-f", help="Format: json, m3u, m3u8"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (default: print to stdout)"),
+    output: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output file path (default: print to stdout)"
+    ),
 ):
     """Export a playlist to a specific format."""
     try:
@@ -1025,15 +1082,17 @@ def _maybe_upgrade_demo(env: dict, updates: dict) -> None:
     from music_teacher_ai.database.models import Song
     from music_teacher_ai.database.sqlite import get_session
 
-    genius_key = updates.get("GENIUS_ACCESS_TOKEN") or env.get("GENIUS_ACCESS_TOKEN") or os.getenv("GENIUS_ACCESS_TOKEN")
+    genius_key = (
+        updates.get("GENIUS_ACCESS_TOKEN")
+        or env.get("GENIUS_ACCESS_TOKEN")
+        or os.getenv("GENIUS_ACCESS_TOKEN")
+    )
     if not genius_key:
         return
 
     try:
         with get_session() as session:
-            demo_count = len(session.exec(
-                select(Song).where(Song.metadata_source == "demo")
-            ).all())
+            demo_count = len(session.exec(select(Song).where(Song.metadata_source == "demo")).all())
     except Exception:
         return
 
@@ -1132,16 +1191,18 @@ def config(
 
     # Display admin token (first generation or reminder)
     console.print()
-    console.print(Panel(
-        f"[bold]REST / MCP admin token[/bold]\n\n"
-        f"  [cyan]{token}[/cyan]\n\n"
-        f"  Use as [bold]Authorization: Bearer <token>[/bold] header for [bold]POST /config[/bold].\n"
-        f"  For MCP, pass as [bold]admin_token[/bold] in the tool inputs.\n"
-        f"  The token is also stored in [dim].env[/dim] as [bold]ADMIN_TOKEN[/bold].",
-        title="Admin Token",
-        border_style="yellow",
-        expand=False,
-    ))
+    console.print(
+        Panel(
+            f"[bold]REST / MCP admin token[/bold]\n\n"
+            f"  [cyan]{token}[/cyan]\n\n"
+            f"  Use as [bold]Authorization: Bearer <token>[/bold] header for [bold]POST /config[/bold].\n"
+            f"  For MCP, pass as [bold]admin_token[/bold] in the tool inputs.\n"
+            f"  The token is also stored in [dim].env[/dim] as [bold]ADMIN_TOKEN[/bold].",
+            title="Admin Token",
+            border_style="yellow",
+            expand=False,
+        )
+    )
 
 
 @app.command()
@@ -1185,9 +1246,7 @@ def inspect(
         for song in songs:
             artist_obj = session.get(Artist, song.artist_id)
             artist_name = artist_obj.name if artist_obj else ""
-            lyr = session.exec(
-                select(Lyrics).where(Lyrics.song_id == song.id)
-            ).first()
+            lyr = session.exec(select(Lyrics).where(Lyrics.song_id == song.id)).first()
 
             song_issues: list[str] = []
 
@@ -1272,14 +1331,16 @@ def repair(
         )
 
         # --- Backup current state ---
-        backup_lyrics   = None
+        backup_lyrics = None
         lyr = session.exec(select(Lyrics).where(Lyrics.song_id == record_id)).first()
         if lyr:
             backup_lyrics = lyr.lyrics_text
 
         # --- Validate title first ---
         if not validate_title(song.title).ok:
-            console.print("[yellow]Title looks corrupt — cannot safely re-fetch. Aborting.[/yellow]")
+            console.print(
+                "[yellow]Title looks corrupt — cannot safely re-fetch. Aborting.[/yellow]"
+            )
             raise typer.Exit(1)
 
         # --- Re-fetch metadata ---
@@ -1290,10 +1351,11 @@ def repair(
                 _enrich_with_lastfm,
                 _try_musicbrainz,
             )
+
             meta = _try_musicbrainz(song.title, artist_name)
             if meta:
                 meta = _enrich_with_lastfm(meta)
-                song.metadata_source = None   # force re-apply
+                song.metadata_source = None  # force re-apply
                 _apply_metadata(session, song, artist_obj, meta)
                 console.print("[green]  Metadata updated.[/green]")
             else:
@@ -1316,16 +1378,21 @@ def repair(
                         session.add(lyr)
                     else:
                         import re as _re
+
                         words = _re.findall(r"\b[a-z']+\b", new_lyrics.lower())
-                        session.add(Lyrics(
-                            song_id=record_id,
-                            lyrics_text=new_lyrics,
-                            word_count=len(words),
-                            unique_words=len(set(words)),
-                        ))
+                        session.add(
+                            Lyrics(
+                                song_id=record_id,
+                                lyrics_text=new_lyrics,
+                                word_count=len(words),
+                                unique_words=len(set(words)),
+                            )
+                        )
                     console.print("[green]  Lyrics updated.[/green]")
                 else:
-                    console.print(f"[yellow]  New lyrics failed validation ({vr}) — reverting.[/yellow]")
+                    console.print(
+                        f"[yellow]  New lyrics failed validation ({vr}) — reverting.[/yellow]"
+                    )
                     if lyr and backup_lyrics:
                         lyr.lyrics_text = backup_lyrics
                         session.add(lyr)
@@ -1378,6 +1445,7 @@ def start(
         import uvicorn
 
         from music_teacher_ai.api.rest_api import app as api_app
+
         console.print(f"[green]Starting API server on {host}:{port}[/green]")
         console.print(f"[cyan]Web interface available at: http://{host}:{port}/web[/cyan]")
         uvicorn.run(api_app, host=host, port=port)
@@ -1390,5 +1458,6 @@ def start(
 
 def main():
     from music_teacher_ai.demo.loader import auto_load_demo_if_needed
+
     auto_load_demo_if_needed()
     app()

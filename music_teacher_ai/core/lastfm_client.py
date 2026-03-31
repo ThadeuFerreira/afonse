@@ -6,6 +6,7 @@ Requires LASTFM_API_KEY in .env (free at https://www.last.fm/api/account/create)
 
 Used as a supplement to MusicBrainz when Spotify is unavailable.
 """
+
 from typing import Optional
 
 from music_teacher_ai.config.settings import LASTFM_API_KEY
@@ -14,6 +15,7 @@ from music_teacher_ai.core.api_cache import cached_api
 
 def _get_network():
     import pylast
+
     if not LASTFM_API_KEY:
         raise RuntimeError(
             "LASTFM_API_KEY is not set. Get a free key at https://www.last.fm/api/account/create"

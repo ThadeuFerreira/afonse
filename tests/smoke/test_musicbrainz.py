@@ -4,6 +4,7 @@ Smoke tests for the MusicBrainz client.
 No API credentials required.
 MusicBrainz enforces 1 req/s — tests use a single well-known song.
 """
+
 from datetime import date
 
 import pytest
@@ -69,9 +70,9 @@ def test_musicbrainz_search_track_uses_cache_without_network(monkeypatch):
     except RuntimeError as exc:
         pytest.skip(f"MusicBrainz request failed during smoke test: {exc}")
 
-    assert _musicbrainz_cache_exists("search_track", title, artist), (
-        "Expected cache file to exist after first search_track call"
-    )
+    assert _musicbrainz_cache_exists(
+        "search_track", title, artist
+    ), "Expected cache file to exist after first search_track call"
 
     def _raise_if_network_used(*_args, **_kwargs):
         raise mb.musicbrainzngs.WebServiceError("Network should not be used on cache hit")
@@ -95,7 +96,7 @@ def test_musicbrainz_no_result_returns_none():
     except RuntimeError as exc:
         pytest.skip(f"MusicBrainz request failed during smoke test: {exc}")
 
-    assert meta.title == 'This Song Does Not Exist'
+    assert meta.title == "This Song Does Not Exist"
     _clear_musicbrainz_cache(
         "search_track",
         "XXXX_THIS_SONG_DOES_NOT_EXIST_XYZ_12345",
@@ -106,4 +107,4 @@ def test_musicbrainz_no_result_returns_none():
     except RuntimeError as exc:
         pytest.skip(f"MusicBrainz request failed during smoke test: {exc}")
 
-    assert meta.title == 'This Song Does Not Exist'
+    assert meta.title == "This Song Does Not Exist"

@@ -19,13 +19,14 @@ class PlaylistSong(BaseModel):
 
 class PlaylistQuery(BaseModel):
     """Stored query that was used to build the playlist — enables future refresh."""
+
     word: Optional[str] = None
     year: Optional[int] = None
     year_min: Optional[int] = None
     year_max: Optional[int] = None
     artist: Optional[str] = None
     genre: Optional[str] = None
-    song: Optional[str] = None              # song title search
+    song: Optional[str] = None  # song title search
     semantic_query: Optional[str] = None
     similar_text: Optional[str] = None
     similar_song_id: Optional[int] = None
@@ -56,11 +57,11 @@ class PlaylistQuery(BaseModel):
 
 
 class Playlist(BaseModel):
-    id: str                          # filesystem slug, e.g. "dream-vocabulary"
+    id: str  # filesystem slug, e.g. "dream-vocabulary"
     name: str
     description: Optional[str] = None
-    created_at: str                  # ISO date string
-    query_origin: Optional[str] = None   # human-readable query summary
+    created_at: str  # ISO date string
+    query_origin: Optional[str] = None  # human-readable query summary
     query: Optional[PlaylistQuery] = None
     songs: list[PlaylistSong] = []
 

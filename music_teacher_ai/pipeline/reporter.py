@@ -12,6 +12,7 @@ Usage:
     report.add_error(song_id=42, title="Imagine", error="404 not found")
     path = report.save()
 """
+
 import json
 from datetime import datetime
 from pathlib import Path
